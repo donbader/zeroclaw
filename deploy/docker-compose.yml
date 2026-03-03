@@ -9,8 +9,8 @@
 services:
   zeroclaw:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: zeroclaw
     restart: unless-stopped
     extra_hosts:

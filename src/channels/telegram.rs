@@ -1013,13 +1013,21 @@ impl TelegramChannel {
         });
 
         let resp = self.http_client().post(&url).json(&body).send().await?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
 
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let text = resp.text().await.unwrap_or_default();
-            // Only log Telegram's error_code and description, not the full body
-            let detail = serde_json::from_str::<serde_json::Value>(&text)
-                .ok()
+        // Telegram Bot API returns HTTP 200 even on logical failures,
+        // so we must check the JSON body's "ok" field.
+        let parsed = serde_json::from_str::<serde_json::Value>(&text).ok();
+        let api_ok = parsed
+            .as_ref()
+            .and_then(|v| v.get("ok"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        if !status.is_success() || !api_ok {
+            let detail = parsed
+                .as_ref()
                 .and_then(|v| {
                     let code = v.get("error_code");
                     let desc = v.get("description").and_then(|d| d.as_str());

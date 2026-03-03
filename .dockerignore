@@ -13,6 +13,7 @@ tests
 
 # Markdown files (README, CHANGELOG, etc.)
 *.md
+!deploy/workspace/*.md
 
 # Images (unnecessary for build)
 *.png
