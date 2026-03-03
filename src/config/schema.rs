@@ -4636,6 +4636,9 @@ pub enum StreamMode {
     Off,
     /// Update a draft message with every flush interval.
     Partial,
+    /// Use Telegram's native `sendMessageDraft` for smooth animated streaming
+    /// in private chats. Falls back to `editMessageText` in group/supergroup chats.
+    Native,
 }
 
 /// Progress verbosity for channels that support draft streaming.
