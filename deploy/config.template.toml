@@ -6,9 +6,15 @@
 workspace_dir = "/zeroclaw-data/workspace"
 config_path = "/zeroclaw-data/.zeroclaw/config.toml"
 api_key = "${API_KEY}"
-default_provider = "openrouter"
-default_model = "anthropic/claude-sonnet-4-20250514"
+default_provider = "kiro-gw"
+default_model = "claude-sonnet-4-20250514"
 default_temperature = 0.7
+
+[model_providers.kiro-gw]
+name = "openai"
+base_url = "http://host.docker.internal:8765/v1"
+wire_api = "chat_completions"
+model = "claude-sonnet-4-20250514"
 
 [gateway]
 port = 42617

@@ -2,7 +2,7 @@
 #
 # 1. Edit config.template.toml for non-secret settings
 # 2. Create .env with secrets:
-#      API_KEY=sk-or-v1-...
+#      API_KEY=your-api-key
 #      TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 # 3. docker compose up -d
 
@@ -13,16 +13,14 @@ services:
       dockerfile: Dockerfile
     container_name: zeroclaw
     restart: unless-stopped
-
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
-
     volumes:
       - zeroclaw-data:/zeroclaw-data
-
     ports:
       - "${HOST_PORT:-42617}:42617"
-
     deploy:
       resources:
         limits:
@@ -31,7 +29,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-
     healthcheck:
       test: ["CMD", "zeroclaw", "status"]
       interval: 60s
