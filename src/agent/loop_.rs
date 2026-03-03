@@ -271,6 +271,11 @@ pub(crate) const DRAFT_CLEAR_SENTINEL: &str = "\x00CLEAR\x00";
 pub(crate) const DRAFT_PROGRESS_SENTINEL: &str = "\x00PROGRESS\x00";
 /// Sentinel prefix for full in-place progress blocks.
 pub(crate) const DRAFT_PROGRESS_BLOCK_SENTINEL: &str = "\x00PROGRESS_BLOCK\x00";
+/// Sentinel prefix for a named in-place progress block (hierarchical mode).
+/// Format: `DRAFT_PROGRESS_NAMED_BLOCK_PREFIX + agent_name + "\x00"` followed by the block body.
+pub(crate) const DRAFT_PROGRESS_NAMED_BLOCK_PREFIX: &str = "\x00PROGRESS_BLOCK:";
+/// Terminator after the agent name in a named progress block sentinel.
+pub(crate) const DRAFT_PROGRESS_NAMED_BLOCK_SEP: &str = "\x00";
 /// Progress-section marker inserted into accumulated streaming drafts.
 pub(crate) const DRAFT_PROGRESS_SECTION_START: &str = "\n<!-- progress-start -->\n";
 /// Progress-section marker inserted into accumulated streaming drafts.
@@ -311,8 +316,11 @@ tokio::task_local! {
     static TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT: Option<NonCliApprovalContext>;
     static LOOP_DETECTION_CONFIG: LoopDetectionConfig;
     static SAFETY_HEARTBEAT_CONFIG: Option<SafetyHeartbeatConfig>;
-    static TOOL_LOOP_PROGRESS_MODE: ProgressMode;
+    pub(crate) static TOOL_LOOP_PROGRESS_MODE: ProgressMode;
     static TOOL_LOOP_COST_ENFORCEMENT_CONTEXT: Option<CostEnforcementContext>;
+    /// Parent delta sender exposed to sub-agent spawn tools so they can forward
+    /// child progress back to the draft updater when `Hierarchical` mode is active.
+    pub(crate) static TOOL_LOOP_DELTA_TX: Option<tokio::sync::mpsc::Sender<String>>;
     /// Last `input_tokens` reported by the LLM provider in this tool-call loop.
     /// Written inside `run_tool_call_loop` via atomic store; read by the caller
     /// after the loop completes to drive token-based auto-compaction.
@@ -383,11 +391,17 @@ fn should_inject_safety_heartbeat(counter: usize, interval: usize) -> bool {
 }
 
 fn should_emit_verbose_progress(mode: ProgressMode) -> bool {
-    mode == ProgressMode::Verbose
+    mode == ProgressMode::Verbose || mode == ProgressMode::Hierarchical
 }
 
 fn should_emit_tool_progress(mode: ProgressMode) -> bool {
     mode != ProgressMode::Off
+}
+
+/// Returns `true` when the caller should forward sub-agent progress to the
+/// parent draft updater (only in `Hierarchical` mode).
+pub(crate) fn should_forward_subagent_progress(mode: ProgressMode) -> bool {
+    mode == ProgressMode::Hierarchical
 }
 
 fn estimate_prompt_tokens(
@@ -943,28 +957,32 @@ pub(crate) async fn run_tool_call_loop_with_reply_target(
     excluded_tools: &[String],
     progress_mode: ProgressMode,
 ) -> Result<String> {
-    TOOL_LOOP_PROGRESS_MODE
+    let delta_tx_for_scope = on_delta.clone();
+    TOOL_LOOP_DELTA_TX
         .scope(
-            progress_mode,
-            TOOL_LOOP_REPLY_TARGET.scope(
-                reply_target.map(str::to_string),
-                run_tool_call_loop(
-                    provider,
-                    history,
-                    tools_registry,
-                    observer,
-                    provider_name,
-                    model,
-                    temperature,
-                    silent,
-                    approval,
-                    channel_name,
-                    multimodal_config,
-                    max_tool_iterations,
-                    cancellation_token,
-                    on_delta,
-                    hooks,
-                    excluded_tools,
+            delta_tx_for_scope,
+            TOOL_LOOP_PROGRESS_MODE.scope(
+                progress_mode,
+                TOOL_LOOP_REPLY_TARGET.scope(
+                    reply_target.map(str::to_string),
+                    run_tool_call_loop(
+                        provider,
+                        history,
+                        tools_registry,
+                        observer,
+                        provider_name,
+                        model,
+                        temperature,
+                        silent,
+                        approval,
+                        channel_name,
+                        multimodal_config,
+                        max_tool_iterations,
+                        cancellation_token,
+                        on_delta,
+                        hooks,
+                        excluded_tools,
+                    ),
                 ),
             ),
         )
@@ -998,35 +1016,38 @@ pub(crate) async fn run_tool_call_loop_with_non_cli_approval_context(
     let reply_target = non_cli_approval_context
         .as_ref()
         .map(|ctx| ctx.reply_target.clone());
-
-    TOOL_LOOP_PROGRESS_MODE
+    let delta_tx_for_scope = on_delta.clone();
+    TOOL_LOOP_DELTA_TX
         .scope(
-            progress_mode,
-            LOOP_DETECTION_CONFIG.scope(
-                loop_detection,
-                SAFETY_HEARTBEAT_CONFIG.scope(
-                    safety_heartbeat,
-                    TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT.scope(
-                        non_cli_approval_context,
-                        TOOL_LOOP_REPLY_TARGET.scope(
-                            reply_target,
-                            run_tool_call_loop(
-                                provider,
-                                history,
-                                tools_registry,
-                                observer,
-                                provider_name,
-                                model,
-                                temperature,
-                                silent,
-                                approval,
-                                channel_name,
-                                multimodal_config,
-                                max_tool_iterations,
-                                cancellation_token,
-                                on_delta,
-                                hooks,
-                                excluded_tools,
+            delta_tx_for_scope,
+            TOOL_LOOP_PROGRESS_MODE.scope(
+                progress_mode,
+                LOOP_DETECTION_CONFIG.scope(
+                    loop_detection,
+                    SAFETY_HEARTBEAT_CONFIG.scope(
+                        safety_heartbeat,
+                        TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT.scope(
+                            non_cli_approval_context,
+                            TOOL_LOOP_REPLY_TARGET.scope(
+                                reply_target,
+                                run_tool_call_loop(
+                                    provider,
+                                    history,
+                                    tools_registry,
+                                    observer,
+                                    provider_name,
+                                    model,
+                                    temperature,
+                                    silent,
+                                    approval,
+                                    channel_name,
+                                    multimodal_config,
+                                    max_tool_iterations,
+                                    cancellation_token,
+                                    on_delta,
+                                    hooks,
+                                    excluded_tools,
+                                ),
                             ),
                         ),
                     ),
@@ -2792,7 +2813,12 @@ pub async fn run(
             no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
             ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
             failure_streak_threshold: config.agent.loop_detection_failure_streak,
-            exempt_tools: config.agent.loop_detection_exempt_tools.iter().cloned().collect(),
+            exempt_tools: config
+                .agent
+                .loop_detection_exempt_tools
+                .iter()
+                .cloned()
+                .collect(),
         };
         let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
             Some(SafetyHeartbeatConfig {
@@ -2978,7 +3004,12 @@ pub async fn run(
                 no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
                 ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
                 failure_streak_threshold: config.agent.loop_detection_failure_streak,
-                exempt_tools: config.agent.loop_detection_exempt_tools.iter().cloned().collect(),
+                exempt_tools: config
+                    .agent
+                    .loop_detection_exempt_tools
+                    .iter()
+                    .cloned()
+                    .collect(),
             };
             let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
                 Some(SafetyHeartbeatConfig {
@@ -6933,12 +6964,19 @@ Let me check the result."#;
     #[test]
     fn progress_mode_gates_work_as_expected() {
         assert!(should_emit_verbose_progress(ProgressMode::Verbose));
+        assert!(should_emit_verbose_progress(ProgressMode::Hierarchical));
         assert!(!should_emit_verbose_progress(ProgressMode::Compact));
         assert!(!should_emit_verbose_progress(ProgressMode::Off));
 
         assert!(should_emit_tool_progress(ProgressMode::Verbose));
+        assert!(should_emit_tool_progress(ProgressMode::Hierarchical));
         assert!(should_emit_tool_progress(ProgressMode::Compact));
         assert!(!should_emit_tool_progress(ProgressMode::Off));
+
+        assert!(!should_forward_subagent_progress(ProgressMode::Verbose));
+        assert!(should_forward_subagent_progress(ProgressMode::Hierarchical));
+        assert!(!should_forward_subagent_progress(ProgressMode::Compact));
+        assert!(!should_forward_subagent_progress(ProgressMode::Off));
     }
 
     #[test]

@@ -40,10 +40,14 @@ impl Default for LoopDetectionConfig {
             no_progress_threshold: 3,
             ping_pong_cycles: 2,
             failure_streak_threshold: 3,
-            exempt_tools: ["subagent_manage", "subagent_list", "delegate_coordination_status"]
-                .into_iter()
-                .map(String::from)
-                .collect(),
+            exempt_tools: [
+                "subagent_manage",
+                "subagent_list",
+                "delegate_coordination_status",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
         }
     }
 }
@@ -432,7 +436,12 @@ mod tests {
         };
         let mut det = LoopDetector::new(config);
         for _ in 0..20 {
-            det.record_call("subagent_manage", r#"{"session_id":"s1","action":"status"}"#, "{\"status\":\"running\"}", true);
+            det.record_call(
+                "subagent_manage",
+                r#"{"session_id":"s1","action":"status"}"#,
+                "{\"status\":\"running\"}",
+                true,
+            );
         }
         assert_eq!(det.check(), DetectionVerdict::Continue);
     }
