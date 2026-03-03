@@ -12,10 +12,13 @@ for dir in sessions memory state cron skills; do
   mkdir -p "/zeroclaw-data/workspace/${dir}"
 done
 
-# Copy workspace identity files (skip if already present from volume)
+# Copy workspace identity files
+# RESET_WORKSPACE=true → overwrite all; otherwise skip existing files
 for f in /etc/zeroclaw/workspace/*.md; do
   name=$(basename "$f")
-  [ ! -f "/zeroclaw-data/workspace/${name}" ] && cp "$f" "/zeroclaw-data/workspace/${name}"
+  if [ "${RESET_WORKSPACE}" = "true" ] || [ ! -f "/zeroclaw-data/workspace/${name}" ]; then
+    cp "$f" "/zeroclaw-data/workspace/${name}"
+  fi
 done
 
 # Substitute env vars (secrets from .env) into the config template

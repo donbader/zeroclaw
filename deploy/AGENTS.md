@@ -69,7 +69,7 @@ At container startup, `entrypoint.sh`:
 
 5. **Default CMD is `daemon`**: This runs gateway + all configured channels. The upstream default is `gateway` (API only). For Telegram bot deployments, `daemon` is correct.
 
-6. **Workspace files are copy-on-first-boot**: The entrypoint only copies workspace `.md` files if they don't already exist on the volume. To reset personality, delete the files from the volume and restart.
+6. **Workspace files are copy-on-first-boot**: The entrypoint only copies workspace `.md` files if they don't already exist on the volume. To force-reset all identity files from the image, set `RESET_WORKSPACE=true` in `.env` and restart. Remove it after reset to preserve runtime edits.
 
 ## Validation
 
