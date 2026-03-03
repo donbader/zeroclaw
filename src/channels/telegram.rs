@@ -2128,6 +2128,15 @@ Allowlist Telegram username (without '@') or numeric user ID.",
                         continue;
                     }
                 }
+                // Spoiler: ||text||
+                if i + 1 < len && bytes[i] == b'|' && bytes[i + 1] == b'|' {
+                    if let Some(end) = line[i + 2..].find("||") {
+                        let inner = Self::escape_html(&line[i + 2..i + 2 + end]);
+                        write!(line_out, "<tg-spoiler>{inner}</tg-spoiler>").unwrap();
+                        i += 4 + end;
+                        continue;
+                    }
+                }
                 // Default: escape HTML entities
                 let ch = line[i..].chars().next().unwrap();
                 match ch {
