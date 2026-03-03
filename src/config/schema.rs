@@ -1075,6 +1075,11 @@ pub struct AgentConfig {
     /// Set to `0` to disable. Default: `3`.
     #[serde(default = "default_loop_detection_failure_streak")]
     pub loop_detection_failure_streak: usize,
+    /// Loop detection: tools exempt from all detection strategies.
+    /// Calls to these tools are silently skipped by the loop detector.
+    /// Default: `["subagent_manage", "subagent_list", "delegate_coordination_status"]`.
+    #[serde(default = "default_loop_detection_exempt_tools")]
+    pub loop_detection_exempt_tools: Vec<String>,
     /// Safety heartbeat injection interval inside `run_tool_call_loop`.
     /// Injects a security-constraint reminder every N tool iterations.
     /// Set to `0` to disable. Default: `5`.
@@ -1176,6 +1181,14 @@ fn default_loop_detection_failure_streak() -> usize {
     3
 }
 
+fn default_loop_detection_exempt_tools() -> Vec<String> {
+    vec![
+        "subagent_manage".to_string(),
+        "subagent_list".to_string(),
+        "delegate_coordination_status".to_string(),
+    ]
+}
+
 fn default_safety_heartbeat_interval() -> usize {
     5
 }
@@ -1198,6 +1211,7 @@ impl Default for AgentConfig {
             loop_detection_no_progress_threshold: default_loop_detection_no_progress_threshold(),
             loop_detection_ping_pong_cycles: default_loop_detection_ping_pong_cycles(),
             loop_detection_failure_streak: default_loop_detection_failure_streak(),
+            loop_detection_exempt_tools: default_loop_detection_exempt_tools(),
             safety_heartbeat_interval: default_safety_heartbeat_interval(),
             safety_heartbeat_turn_interval: default_safety_heartbeat_turn_interval(),
             context_window_limit: None,

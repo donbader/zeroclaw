@@ -263,6 +263,7 @@ struct ChannelRuntimeDefaults {
     loop_detection_no_progress_threshold: usize,
     loop_detection_ping_pong_cycles: usize,
     loop_detection_failure_streak: usize,
+    loop_detection_exempt_tools: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1106,6 +1107,7 @@ fn runtime_defaults_from_config(config: &Config) -> ChannelRuntimeDefaults {
         loop_detection_no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
         loop_detection_ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
         loop_detection_failure_streak: config.agent.loop_detection_failure_streak,
+        loop_detection_exempt_tools: config.agent.loop_detection_exempt_tools.clone(),
     }
 }
 
@@ -1163,6 +1165,7 @@ fn runtime_defaults_snapshot(ctx: &ChannelRuntimeContext) -> ChannelRuntimeDefau
         loop_detection_no_progress_threshold: LoopDetectionConfig::default().no_progress_threshold,
         loop_detection_ping_pong_cycles: LoopDetectionConfig::default().ping_pong_cycles,
         loop_detection_failure_streak: LoopDetectionConfig::default().failure_streak_threshold,
+        loop_detection_exempt_tools: LoopDetectionConfig::default().exempt_tools.into_iter().collect(),
     }
 }
 
@@ -3832,6 +3835,7 @@ or tune thresholds in config.",
                         no_progress_threshold: runtime_defaults.loop_detection_no_progress_threshold,
                         ping_pong_cycles: runtime_defaults.loop_detection_ping_pong_cycles,
                         failure_streak_threshold: runtime_defaults.loop_detection_failure_streak,
+                        exempt_tools: runtime_defaults.loop_detection_exempt_tools.iter().cloned().collect(),
                     },
                 ),
             ),
@@ -9589,6 +9593,8 @@ BTC is currently around $65,000 based on latest tool output."#
                             .ping_pong_cycles,
                         loop_detection_failure_streak: LoopDetectionConfig::default()
                             .failure_streak_threshold,
+                        loop_detection_exempt_tools: LoopDetectionConfig::default()
+                            .exempt_tools.into_iter().collect(),
                     },
                     perplexity_filter: crate::config::PerplexityFilterConfig::default(),
                     outbound_leak_guard: crate::config::OutboundLeakGuardConfig::default(),

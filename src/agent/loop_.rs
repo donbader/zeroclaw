@@ -2792,6 +2792,7 @@ pub async fn run(
             no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
             ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
             failure_streak_threshold: config.agent.loop_detection_failure_streak,
+            exempt_tools: config.agent.loop_detection_exempt_tools.iter().cloned().collect(),
         };
         let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
             Some(SafetyHeartbeatConfig {
@@ -2977,6 +2978,7 @@ pub async fn run(
                 no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
                 ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
                 failure_streak_threshold: config.agent.loop_detection_failure_streak,
+                exempt_tools: config.agent.loop_detection_exempt_tools.iter().cloned().collect(),
             };
             let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
                 Some(SafetyHeartbeatConfig {

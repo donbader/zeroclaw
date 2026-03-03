@@ -573,6 +573,7 @@ impl Agent {
             no_progress_threshold: self.config.loop_detection_no_progress_threshold,
             ping_pong_cycles: self.config.loop_detection_ping_pong_cycles,
             failure_streak_threshold: self.config.loop_detection_failure_streak,
+            exempt_tools: self.config.loop_detection_exempt_tools.iter().cloned().collect(),
         });
 
         for iteration in 0..self.config.max_tool_iterations {
