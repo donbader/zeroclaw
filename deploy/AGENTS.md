@@ -11,22 +11,44 @@ Dokploy-ready (or any Docker Compose platform) deployment for ZeroClaw. Config l
 | File | Role |
 |---|---|
 | `config.template.toml` | Full ZeroClaw config with `${VAR}` placeholders for secrets |
-| `entrypoint.sh` | Runs `envsubst` on the template, then execs `zeroclaw daemon` |
-| `Dockerfile` | Pulls official ZeroClaw image, layers entrypoint + template on Debian base |
+| `entrypoint.sh` | Runs `envsubst` on the template, copies workspace files, then execs `zeroclaw daemon` |
+| `Dockerfile` | Pulls official ZeroClaw image, layers entrypoint + template + workspace on Debian base |
 | `docker-compose.yml` | Compose file, reads `.env` for secrets |
 | `.env.example` | Example secrets file (copy to `.env`) |
+| `workspace/` | Identity/personality markdown files injected into the system prompt |
+
+## Workspace Identity Files
+
+These files define the agent's personality, tone, and behavior. They are copied into `/zeroclaw-data/workspace/` on first boot (existing files on the volume are not overwritten).
+
+| File | Purpose |
+|---|---|
+| `IDENTITY.md` | Name, creature type, vibe, emoji |
+| `SOUL.md` | Personality, communication style, boundaries |
+| `USER.md` | Info about the operator (name, timezone, preferences) |
+| `BOOTSTRAP.md` | First-run greeting (agent deletes this after getting to know you) |
+| `AGENTS.md` | Session startup checklist, safety rules, memory system |
+| `TOOLS.md` | Built-in tool reference and local environment notes |
+| `HEARTBEAT.md` | Periodic tasks (empty by default) |
+| `MEMORY.md` | Long-term curated memory (auto-injected into system prompt) |
+
+To customize personality: edit the files in `deploy/workspace/` and rebuild. Or edit them live on the Docker volume — the entrypoint won't overwrite existing files.
 
 ## How It Works
 
 1. Non-secret config (provider, model, channels, allowed users, etc.) is edited directly in `config.template.toml`.
 2. Secrets (`API_KEY`, `TELEGRAM_BOT_TOKEN`, etc.) use `${VAR}` placeholders in the template.
-3. At container startup, `entrypoint.sh` runs `envsubst` to produce the final `config.toml` with real values from `.env`.
+3. At container startup, `entrypoint.sh`:
+   - Copies workspace identity files to the volume (skip if already present)
+   - Runs `envsubst` to produce the final `config.toml` with real values from `.env`
+   - Execs `zeroclaw daemon`
 
 ## Editing Rules
 
 - Edit `config.template.toml` directly for any non-secret config change (provider, model, channel settings, allowed users, etc.).
 - Only use `${VAR}` placeholders for actual secrets (API keys, tokens). Don't over-parameterize.
-- Keep `entrypoint.sh` minimal — it's just `envsubst` + `exec`. No conditional logic needed.
+- Edit `workspace/*.md` for personality/tone changes. These are templates from the official onboarding wizard.
+- Keep `entrypoint.sh` minimal — it's `envsubst` + file copy + `exec`. No conditional logic needed.
 - Never commit `.env`. Only `.env.example` is tracked.
 - Keep `entrypoint.sh` POSIX sh compatible.
 
@@ -42,6 +64,8 @@ Dokploy-ready (or any Docker Compose platform) deployment for ZeroClaw. Config l
 
 5. **Default CMD is `daemon`**: This runs gateway + all configured channels. The upstream default is `gateway` (API only). For Telegram bot deployments, `daemon` is correct.
 
+6. **Workspace files are copy-on-first-boot**: The entrypoint only copies workspace `.md` files if they don't already exist on the volume. To reset personality, delete the files from the volume and restart.
+
 ## Validation
 
 ```bash
@@ -52,6 +76,9 @@ docker compose up --build -d
 
 # Verify generated config
 docker compose exec zeroclaw cat /zeroclaw-data/.zeroclaw/config.toml
+
+# Verify workspace files
+docker compose exec zeroclaw ls /zeroclaw-data/workspace/
 
 # Check health
 curl http://localhost:42617/health

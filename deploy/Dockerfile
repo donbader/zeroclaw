@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=upstream /usr/local/bin/zeroclaw /usr/local/bin/zeroclaw
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY config.template.toml /etc/zeroclaw/config.template.toml
+COPY workspace/ /etc/zeroclaw/workspace/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 RUN mkdir -p /zeroclaw-data/.zeroclaw /zeroclaw-data/workspace \
