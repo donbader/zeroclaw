@@ -154,9 +154,10 @@ USER root
 ENV PROVIDER=""
 ENV ZEROCLAW_MODEL=""
 
-# envsubst for config template secret injection
+# envsubst for config template secret injection; nodejs/npm for stdio MCP servers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
+    nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
