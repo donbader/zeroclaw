@@ -33,6 +33,9 @@ max_tool_iterations = 20
 max_history_messages = 50
 parallel_tools = false
 safety_heartbeat_interval = 5
+loop_detection_no_progress_threshold = 6
+loop_detection_ping_pong_cycles = 4
+loop_detection_failure_streak = 10
 
 [agent.session]
 backend = "sqlite"
