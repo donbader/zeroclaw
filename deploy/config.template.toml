@@ -103,7 +103,7 @@ model = "claude-opus-4.6"
 # For Docker: prefer http/sse transports. Stdio needs binaries in the container.
 
 [mcp]
-enabled = false
+enabled = true
 
 # Example: HTTP transport (cleanest for Docker)
 # [[mcp.servers]]
@@ -132,6 +132,13 @@ transport = "stdio"
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
 env = { GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}" }
+
+[[mcp.servers]]
+name = "exa"
+transport = "sse"
+url = "https://mcp.exa.ai/mcp"
+tool_timeout_secs = 30
+
 # ── Channels ─────────────────────────────────────────────────────
 
 [channels_config]
