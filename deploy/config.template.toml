@@ -51,25 +51,35 @@ max_concurrent = 10
 
 # ── Delegate Agents ──────────────────────────────────────────────
 # Each [agents.<name>] defines a specialist the lead agent can delegate to.
-# The lead agent uses default_provider/default_model above.
+# The lead agent uses default_provider/default_model above (sonnet).
+# Different models per agent = the whole point of delegation.
 
 [agents.researcher]
 provider = "custom:http://host.docker.internal:8765/v1"
-model = "claude-sonnet-4-20250514"
-system_prompt = "You are a research specialist. Provide thorough, well-sourced analysis. Focus on accuracy and completeness."
-capabilities = ["research", "analysis", "summary"]
+model = "claude-haiku-4.5"                # fast & cheap for info gathering
+system_prompt = "You are a research specialist. Provide thorough, well-sourced analysis. Focus on accuracy and completeness. Be concise."
+capabilities = ["research", "analysis", "summary", "triage"]
 priority = 1
 temperature = 0.5
 max_depth = 3
 
 [agents.coder]
 provider = "custom:http://host.docker.internal:8765/v1"
-model = "claude-sonnet-4-20250514"
-system_prompt = "You are a coding specialist. Write clean, correct, minimal code. Follow existing patterns."
-capabilities = ["coding", "refactor", "debug"]
+model = "claude-sonnet-4-20250514"        # strong for code quality
+system_prompt = "You are a coding specialist. Write clean, correct, minimal code. Follow existing patterns. No unnecessary abstractions."
+capabilities = ["coding", "refactor", "debug", "review"]
 priority = 1
-temperature = 0.3
+temperature = 0.2
 max_depth = 2
+
+[agents.reasoner]
+provider = "custom:http://host.docker.internal:8765/v1"
+model = "claude-opus-4.6"                 # heavy reasoning for hard problems
+system_prompt = "You are a deep reasoning specialist. Think step by step. Consider edge cases. Provide thorough analysis with clear conclusions."
+capabilities = ["reasoning", "architecture", "security", "planning"]
+priority = 0
+temperature = 0.3
+max_depth = 1
 
 # Agentic sub-agent example (gets its own tool-call loop):
 # [agents.executor]
@@ -157,15 +167,15 @@ mode = "warn"                    # "warn", "route_down", or "block"
 # Route hint:<name> to specific provider+model combos.
 # Usage: pass "hint:fast" or "hint:reasoning" as model parameter.
 
-# [[model_routes]]
-# hint = "fast"
-# provider = "custom:http://host.docker.internal:8765/v1"
-# model = "claude-haiku-3.5"
-#
-# [[model_routes]]
-# hint = "reasoning"
-# provider = "custom:http://host.docker.internal:8765/v1"
-# model = "claude-opus-4-20250514"
+[[model_routes]]
+hint = "fast"
+provider = "custom:http://host.docker.internal:8765/v1"
+model = "claude-haiku-4.5"
+
+[[model_routes]]
+hint = "reasoning"
+provider = "custom:http://host.docker.internal:8765/v1"
+model = "claude-opus-4.6"
 
 # ── Research Phase ───────────────────────────────────────────────
 
