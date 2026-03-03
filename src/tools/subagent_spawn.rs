@@ -350,7 +350,36 @@ impl Tool for SubAgentSpawnTool {
         let sid = session_id.clone();
         let mut bg_load_lease = load_lease;
 
+        // Capture parent delta sender + progress mode from task-locals before spawn
+        // (task-locals don't propagate across tokio::spawn boundaries).
+        let parent_delta_tx: Option<tokio::sync::mpsc::Sender<String>> =
+            crate::agent::loop_::TOOL_LOOP_DELTA_TX
+                .try_with(Clone::clone)
+                .ok()
+                .flatten();
+        let progress_mode: crate::config::ProgressMode =
+            crate::agent::loop_::TOOL_LOOP_PROGRESS_MODE
+                .try_with(|m| *m)
+                .unwrap_or_default();
+
         let handle = tokio::spawn(async move {
+            // Build child delta channel + forwarder when hierarchical mode is active.
+            let on_delta = if crate::agent::loop_::should_forward_subagent_progress(progress_mode) {
+                if let Some(parent_tx) = parent_delta_tx {
+                    let (child_tx, child_rx) = tokio::sync::mpsc::channel::<String>(64);
+                    tokio::spawn(subagent_progress_forwarder(
+                        agent_name_owned.clone(),
+                        parent_tx,
+                        child_rx,
+                    ));
+                    Some(child_tx)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             let result = if is_agentic {
                 run_agentic_background(
                     &agent_name_owned,
@@ -359,6 +388,7 @@ impl Tool for SubAgentSpawnTool {
                     &full_prompt,
                     &parent_tools,
                     &multimodal_config,
+                    on_delta,
                 )
                 .await
             } else {
@@ -517,6 +547,7 @@ async fn run_agentic_background(
     full_prompt: &str,
     parent_tools: &[Arc<dyn Tool>],
     multimodal_config: &crate::config::MultimodalConfig,
+    on_delta: Option<tokio::sync::mpsc::Sender<String>>,
 ) -> anyhow::Result<ToolResult> {
     if agent_config.allowed_tools.is_empty() {
         return Ok(ToolResult {
@@ -582,7 +613,7 @@ async fn run_agentic_background(
             multimodal_config,
             agent_config.max_iterations,
             None,
-            None,
+            on_delta,
             None,
             &[],
         ),
@@ -619,6 +650,51 @@ async fn run_agentic_background(
                 "Agent '{agent_name}' timed out after {SPAWN_TIMEOUT_SECS}s"
             )),
         }),
+    }
+}
+
+/// Indent each line of `text` by two spaces, using `fold` + `write!` to satisfy clippy.
+fn indent_lines(text: &str) -> String {
+    use std::fmt::Write;
+    text.lines().fold(String::new(), |mut acc, line| {
+        let _ = writeln!(acc, "  {line}");
+        acc
+    })
+}
+/// Forwards progress deltas from a child sub-agent tool loop to the parent
+/// draft updater, rewriting anonymous progress blocks into named blocks so the
+/// channel layer can render them under the agent's heading.
+async fn subagent_progress_forwarder(
+    agent_name: String,
+    parent_tx: tokio::sync::mpsc::Sender<String>,
+    mut child_rx: tokio::sync::mpsc::Receiver<String>,
+) {
+    use crate::agent::loop_::{
+        DRAFT_PROGRESS_BLOCK_SENTINEL, DRAFT_PROGRESS_NAMED_BLOCK_PREFIX,
+        DRAFT_PROGRESS_NAMED_BLOCK_SEP, DRAFT_PROGRESS_SENTINEL,
+    };
+
+    while let Some(delta) = child_rx.recv().await {
+        let rewritten = if let Some(block) = delta.strip_prefix(DRAFT_PROGRESS_BLOCK_SENTINEL) {
+            // Rewrite anonymous block → named block: indent each line under agent heading.
+            let indented = indent_lines(block);
+            format!(
+                "{DRAFT_PROGRESS_NAMED_BLOCK_PREFIX}{agent_name}{DRAFT_PROGRESS_NAMED_BLOCK_SEP}{indented}"
+            )
+        } else if let Some(rest) = delta.strip_prefix(DRAFT_PROGRESS_SENTINEL) {
+            // Rewrite verbose progress lines (thinking, got N calls) → indented under agent.
+            let indented = indent_lines(rest);
+            format!(
+                "{DRAFT_PROGRESS_NAMED_BLOCK_PREFIX}{agent_name}{DRAFT_PROGRESS_NAMED_BLOCK_SEP}{indented}"
+            )
+        } else {
+            // Non-progress delta (streaming text) — skip forwarding to avoid
+            // interleaving sub-agent answer text into the parent draft.
+            continue;
+        };
+        if parent_tx.send(rewritten).await.is_err() {
+            break; // parent dropped
+        }
     }
 }
 
