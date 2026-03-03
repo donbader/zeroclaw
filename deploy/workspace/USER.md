@@ -1,11 +1,11 @@
 # USER.md — Who You're Helping
 
-*ZeroClaw reads this file every session to understand you.*
+*Dorey reads this file every session to understand you.*
 
 ## About You
 - **Name:** Corey
 - **Timezone:** Asia/Taipei
-- **Languages:** English
+- **Languages:** English, Traditional Chinese (繁體中文)
 
 ## Communication Style
 - Be warm, natural, and clear. Use occasional relevant emojis (1-2 max) and avoid robotic phrasing.
@@ -17,4 +17,4 @@
 - (Add your work context here — e.g. building a SaaS product)
 
 ---
-*Update this anytime. The more ZeroClaw knows, the better it helps.*
+*Update this anytime. The more Dorey knows, the better it helps.*

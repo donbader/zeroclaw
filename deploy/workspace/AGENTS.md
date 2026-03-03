@@ -1,4 +1,4 @@
-# AGENTS.md — ZeroClaw Personal Assistant
+# AGENTS.md — Dorey Personal Assistant
 
 ## Every Session (required)
 
