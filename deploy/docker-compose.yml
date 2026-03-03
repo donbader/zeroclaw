@@ -1,10 +1,12 @@
 # ZeroClaw — Dokploy-ready Docker Compose
 #
-# 1. Edit config.template.toml for non-secret settings
-# 2. Create .env with secrets:
-#      API_KEY=your-api-key
-#      TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-# 3. docker compose up -d
+# Usage:
+#   cd deploy && ./deploy.sh        (builds base + deploys)
+#   cd deploy && ./deploy.sh down   (stops everything)
+#
+# Manual two-step:
+#   docker build -t zeroclaw:dev --target dev -f ../Dockerfile ..
+#   docker compose up --build -d
 
 services:
   zeroclaw:

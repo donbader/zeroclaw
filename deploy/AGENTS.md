@@ -12,10 +12,11 @@ Dokploy-ready (or any Docker Compose platform) deployment for ZeroClaw. Config l
 |---|---|
 | `config.template.toml` | Full ZeroClaw config with `${VAR}` placeholders for secrets |
 | `entrypoint.sh` | Runs `envsubst` on the template, copies workspace files, then execs `zeroclaw daemon` |
-| `Dockerfile` | Pulls official ZeroClaw image, layers entrypoint + template + workspace on Debian base |
+| `Dockerfile` | Thin deploy layer on top of the root `zeroclaw:dev` image; adds `envsubst`, entrypoint, config template, and workspace files |
 | `docker-compose.yml` | Compose file, reads `.env` for secrets |
 | `.env.example` | Example secrets file (copy to `.env`) |
 | `workspace/` | Identity/personality markdown files injected into the system prompt |
+| `deploy.sh` | One-command deploy helper: builds base image from source + runs `docker compose up` |
 
 ## Workspace Identity Files
 
@@ -36,9 +37,12 @@ To customize personality: edit the files in `deploy/workspace/` and rebuild. Or 
 
 ## How It Works
 
-1. Non-secret config (provider, model, channels, allowed users, etc.) is edited directly in `config.template.toml`.
-2. Secrets (`API_KEY`, `TELEGRAM_BOT_TOKEN`, etc.) use `${VAR}` placeholders in the template.
-3. At container startup, `entrypoint.sh`:
+The deploy setup uses a two-phase Docker build:
+
+1. **Base image** (`zeroclaw:dev`): Built from the root `Dockerfile` using the `dev` target. This compiles ZeroClaw from local source, so the binary always matches your codebase.
+2. **Deploy layer** (`deploy/Dockerfile`): Thin layer on top of `zeroclaw:dev` that adds `envsubst`, the config template, workspace files, and the entrypoint.
+
+At container startup, `entrypoint.sh`:
    - Copies workspace identity files to the volume (skip if already present)
    - Runs `envsubst` to produce the final `config.toml` with real values from `.env`
    - Execs `zeroclaw daemon`
@@ -72,7 +76,13 @@ To customize personality: edit the files in `deploy/workspace/` and rebuild. Or 
 cd deploy/
 cp .env.example .env
 # Edit .env with real values
-docker compose up --build -d
+
+# One-command deploy (recommended)
+./deploy.sh
+
+# Or manual two-step:
+#   docker build -t zeroclaw:dev --target dev -f ../Dockerfile ..
+#   docker compose up --build -d
 
 # Verify generated config
 docker compose exec zeroclaw cat /zeroclaw-data/.zeroclaw/config.toml
@@ -82,6 +92,9 @@ docker compose exec zeroclaw ls /zeroclaw-data/workspace/
 
 # Check health
 curl http://localhost:42617/health
+
+# Tail logs
+./deploy.sh logs -f
 
 # Cleanup
 docker compose down -v

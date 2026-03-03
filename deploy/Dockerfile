@@ -1,45 +1,31 @@
 # syntax=docker/dockerfile:1.7
-# Dokploy-ready Dockerfile for ZeroClaw.
-# Builds from local source so the binary always matches the codebase.
-# Uses a config template + envsubst to inject secrets at startup.
+# Thin deploy layer on top of the locally-built ZeroClaw dev image.
+#
+# Requires the base image to be built first:
+#   docker build -t zeroclaw:dev --target dev -f Dockerfile .
+#
+# Then:
+#   cd deploy && docker compose up --build -d
 
-FROM rust:1.87-slim-bookworm AS builder
+ARG BASE_IMAGE=zeroclaw:dev
+FROM ${BASE_IMAGE}
 
+USER root
+
+# envsubst for config template secret injection
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /build
-COPY Cargo.toml Cargo.lock build.rs ./
-COPY src/ src/
-COPY crates/ crates/
-
-RUN cargo build --release --locked --bin zeroclaw \
-    && strip target/release/zeroclaw
-
-FROM debian:trixie-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/target/release/zeroclaw /usr/local/bin/zeroclaw
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY deploy/config.template.toml /etc/zeroclaw/config.template.toml
 COPY deploy/workspace/ /etc/zeroclaw/workspace/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-RUN mkdir -p /zeroclaw-data/.zeroclaw /zeroclaw-data/workspace \
+# Reset runtime dirs (base image may have stale defaults)
+RUN rm -f /zeroclaw-data/.zeroclaw/config.toml \
     && chown -R 65534:65534 /zeroclaw-data
 
-ENV HOME=/zeroclaw-data
-ENV ZEROCLAW_WORKSPACE=/zeroclaw-data/workspace
-
-WORKDIR /zeroclaw-data
 USER 65534:65534
-EXPOSE 42617
-
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["daemon"]
