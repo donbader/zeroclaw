@@ -2812,7 +2812,7 @@ Allowlist Telegram username (without '@') or numeric user ID.",
         self.send_media_by_url("sendVoice", "voice", chat_id, thread_id, url, caption)
             .await
     }
-    }
+}
 #[async_trait]
 impl Channel for TelegramChannel {
     fn name(&self) -> &str {

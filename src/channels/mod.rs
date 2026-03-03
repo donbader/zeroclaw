@@ -778,6 +778,75 @@ fn strip_progress_section_markers(text: &str) -> String {
     text.replace(crate::agent::loop_::DRAFT_PROGRESS_SECTION_START, "")
         .replace(crate::agent::loop_::DRAFT_PROGRESS_SECTION_END, "")
 }
+/// Parse a named progress block delta. Returns `Some((agent_name, block_body))` if the delta
+/// starts with the named block prefix, `None` otherwise.
+fn parse_named_progress_block(delta: &str) -> Option<(&str, &str)> {
+    let rest = delta.strip_prefix(crate::agent::loop_::DRAFT_PROGRESS_NAMED_BLOCK_PREFIX)?;
+    let sep_idx = rest.find(crate::agent::loop_::DRAFT_PROGRESS_NAMED_BLOCK_SEP)?;
+    let agent_name = &rest[..sep_idx];
+    let body = &rest[sep_idx + crate::agent::loop_::DRAFT_PROGRESS_NAMED_BLOCK_SEP.len()..];
+    Some((agent_name, body))
+}
+
+/// Named progress section markers for per-agent blocks in hierarchical mode.
+fn named_progress_section_start(agent_name: &str) -> String {
+    format!("\n<!-- progress-start:{agent_name} -->\n")
+}
+fn named_progress_section_end(agent_name: &str) -> String {
+    format!("\n<!-- progress-end:{agent_name} -->\n")
+}
+
+/// Upsert a named (per-agent) progress section into the accumulated draft.
+fn upsert_named_progress_section(accumulated: &mut String, agent_name: &str, block: &str) {
+    let start_marker = named_progress_section_start(agent_name);
+    let end_marker = named_progress_section_end(agent_name);
+    let section = format!("{start_marker}\u{1f500} {agent_name}\n{block}{end_marker}");
+    if let Some(start) = accumulated.find(&start_marker) {
+        if let Some(end_offset) = accumulated[start..].find(&end_marker) {
+            let end = start + end_offset + end_marker.len();
+            accumulated.replace_range(start..end, &section);
+            return;
+        }
+    }
+    accumulated.push_str(&section);
+}
+
+fn strip_named_progress_section_markers(text: &str) -> String {
+    // Strip all named progress section markers without regex.
+    // Markers look like: \n<!-- progress-start:NAME -->\n and \n<!-- progress-end:NAME -->\n
+    let mut result = text.to_string();
+    loop {
+        let changed = strip_one_marker(&mut result, "<!-- progress-start:", " -->")
+            | strip_one_marker(&mut result, "<!-- progress-end:", " -->");
+        if !changed {
+            break;
+        }
+    }
+    result
+}
+
+/// Remove the first occurrence of a marker line matching `prefix...suffix` (with surrounding newlines).
+fn strip_one_marker(text: &mut String, prefix: &str, suffix: &str) -> bool {
+    if let Some(start) = text.find(prefix) {
+        if let Some(rel_end) = text[start..].find(suffix) {
+            let end = start + rel_end + suffix.len();
+            // Also consume surrounding newlines that are part of the marker format.
+            let trim_start = if start > 0 && text.as_bytes().get(start - 1) == Some(&b'\n') {
+                start - 1
+            } else {
+                start
+            };
+            let trim_end = if text.as_bytes().get(end) == Some(&b'\n') {
+                end + 1
+            } else {
+                end
+            };
+            text.replace_range(trim_start..trim_end, "");
+            return true;
+        }
+    }
+    false
+}
 fn build_channel_system_prompt(
     base_prompt: &str,
     channel_name: &str,
@@ -3705,6 +3774,16 @@ or tune thresholds in config.",
                         continue;
                     }
                     upsert_progress_section(&mut accumulated, block);
+                } else if let Some((agent_name, block)) = parse_named_progress_block(&delta) {
+                    // Hierarchical mode: named sub-agent progress block.
+                    if mode == ProgressMode::Off {
+                        continue;
+                    }
+                    if mode != ProgressMode::Hierarchical {
+                        // In non-hierarchical modes, ignore sub-agent detail.
+                        continue;
+                    }
+                    upsert_named_progress_section(&mut accumulated, agent_name, block);
                 } else {
                     let (is_internal_progress, visible_delta) =
                         split_internal_progress_delta(&delta);
@@ -3721,7 +3800,9 @@ or tune thresholds in config.",
 
                     accumulated.push_str(visible_delta);
                 }
-                let display_text = strip_progress_section_markers(&accumulated);
+                let display_text = strip_named_progress_section_markers(
+                    &strip_progress_section_markers(&accumulated),
+                );
                 if let Err(e) = channel
                     .update_draft(&reply_target, &draft_id, &display_text)
                     .await
@@ -3895,8 +3976,7 @@ or tune thresholds in config.",
                 }
             }
             if runtime_defaults.persist_interrupted_progress {
-                let tool_summary =
-                    extract_tool_context_summary(&history, history_len_before_tools);
+                let tool_summary = extract_tool_context_summary(&history, history_len_before_tools);
                 if !tool_summary.is_empty() {
                     let interrupted_turn =
                         format!("[Interrupted — partial progress]\n{tool_summary}");
@@ -9613,7 +9693,10 @@ BTC is currently around $65,000 based on latest tool output."#
                         loop_detection_failure_streak: LoopDetectionConfig::default()
                             .failure_streak_threshold,
                         loop_detection_exempt_tools: LoopDetectionConfig::default()
-                            .exempt_tools.into_iter().collect(),
+                            .exempt_tools
+                            .into_iter()
+                            .collect(),
+                        persist_interrupted_progress: false,
                     },
                     perplexity_filter: crate::config::PerplexityFilterConfig::default(),
                     outbound_leak_guard: crate::config::OutboundLeakGuardConfig::default(),
@@ -11714,6 +11797,67 @@ Done reminder set for 1:38 AM."#;
         let stripped = strip_progress_section_markers(&text);
         assert!(!stripped.contains("⏳ shell: ls"));
         assert!(stripped.contains("✅ shell (1s)"));
+    }
+
+    #[test]
+    fn upsert_named_progress_section_creates_and_replaces() {
+        let mut text = String::new();
+        upsert_named_progress_section(&mut text, "researcher", "  ⏳ web_search: rust\n");
+        assert!(text.contains("🔀 researcher"));
+        assert!(text.contains("⏳ web_search: rust"));
+
+        // Second upsert replaces the first
+        upsert_named_progress_section(&mut text, "researcher", "  ✅ web_search (2s)\n");
+        assert!(!text.contains("⏳ web_search: rust"));
+        assert!(text.contains("✅ web_search (2s)"));
+    }
+
+    #[test]
+    fn upsert_named_progress_section_multiple_agents() {
+        let mut text = String::new();
+        upsert_named_progress_section(&mut text, "researcher", "  ⏳ web_search: rust\n");
+        upsert_named_progress_section(&mut text, "coder", "  ⏳ shell: cargo build\n");
+        assert!(text.contains("🔀 researcher"));
+        assert!(text.contains("🔀 coder"));
+        assert!(text.contains("⏳ web_search: rust"));
+        assert!(text.contains("⏳ shell: cargo build"));
+
+        // Update researcher without affecting coder
+        upsert_named_progress_section(&mut text, "researcher", "  ✅ web_search (2s)\n");
+        assert!(text.contains("✅ web_search (2s)"));
+        assert!(text.contains("⏳ shell: cargo build"));
+    }
+
+    #[test]
+    fn parse_named_progress_block_extracts_agent_and_body() {
+        let delta = format!(
+            "{}researcher{}  ⏳ shell: ls\n",
+            crate::agent::loop_::DRAFT_PROGRESS_NAMED_BLOCK_PREFIX,
+            crate::agent::loop_::DRAFT_PROGRESS_NAMED_BLOCK_SEP,
+        );
+        let parsed = parse_named_progress_block(&delta);
+        assert!(parsed.is_some());
+        let (name, body) = parsed.unwrap();
+        assert_eq!(name, "researcher");
+        assert_eq!(body, "  ⏳ shell: ls\n");
+    }
+
+    #[test]
+    fn parse_named_progress_block_returns_none_for_regular_delta() {
+        assert!(parse_named_progress_block("just some text").is_none());
+        assert!(parse_named_progress_block("").is_none());
+    }
+
+    #[test]
+    fn strip_named_progress_section_markers_removes_all() {
+        let mut text = String::new();
+        upsert_named_progress_section(&mut text, "researcher", "  ✅ web_search (2s)\n");
+        upsert_named_progress_section(&mut text, "coder", "  ✅ shell (1s)\n");
+        let stripped = strip_named_progress_section_markers(&text);
+        assert!(!stripped.contains("<!-- progress-start:"));
+        assert!(!stripped.contains("<!-- progress-end:"));
+        assert!(stripped.contains("🔀 researcher"));
+        assert!(stripped.contains("🔀 coder"));
     }
 
     #[test]
