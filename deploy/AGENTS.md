@@ -59,7 +59,7 @@ At container startup, `entrypoint.sh`:
 
 ## Known Gotchas
 
-1. **Custom provider format**: ZeroClaw does NOT resolve `[model_providers.<name>]` profiles as provider IDs. Use `custom:<url>` directly as `default_provider` for OpenAI-compatible endpoints (e.g., `custom:http://host.docker.internal:8765/v1`). Use `anthropic-custom:<url>` for Anthropic-compatible endpoints.
+1. **Custom provider format**: ZeroClaw does NOT resolve `[model_providers.<name>]` profiles as provider IDs. Use `custom:<url>` directly as `default_provider` for OpenAI-compatible endpoints (e.g., `custom:http://host.docker.internal:8765/v1`). Use `anthropic-custom:<url>` for Anthropic-compatible endpoints. Note: `anthropic-custom:` URLs must NOT include `/v1` — the provider appends `/v1/messages` automatically (e.g., `anthropic-custom:http://host.docker.internal:8765`).
 
 2. **`[memory]` requires `auto_save`**: When specifying `[memory]` in config, `auto_save` is a required field (no serde default). Always include `auto_save = true`.
 
