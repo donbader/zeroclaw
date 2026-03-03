@@ -29,11 +29,11 @@ auto_save = true
 
 [agent]
 compact_context = false
-max_tool_iterations = 20
+max_tool_iterations = 9999999
 max_history_messages = 50
 context_window_limit = 200000
 compaction_threshold_pct = 0.8
-parallel_tools = false
+parallel_tools = true
 safety_heartbeat_interval = 5
 loop_detection_no_progress_threshold = 6
 loop_detection_ping_pong_cycles = 4
