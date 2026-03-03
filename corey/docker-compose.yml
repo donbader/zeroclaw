@@ -8,9 +8,10 @@
 services:
   zeroclaw:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
-      target: deploy
+      args:
+        ZEROCLAW_VERSION: ${ZEROCLAW_VERSION:-latest}
     container_name: zeroclaw
     restart: unless-stopped
     extra_hosts:

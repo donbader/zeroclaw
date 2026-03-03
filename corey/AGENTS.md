@@ -16,7 +16,7 @@ The canonical deployment settings (config template, compose file, env example, w
 |---|---|
 | `config.template.toml` | Full ZeroClaw config with `${VAR}` placeholders for secrets |
 | `entrypoint.sh` | Runs `envsubst` on the template, copies workspace files, then execs `zeroclaw daemon` |
-| `docker-compose.yml` | Compose file; targets the `deploy` stage in the root `Dockerfile` |
+| `Dockerfile` | Registry-based deploy image; pulls pre-built binary from `ghcr.io` and layers deploy tools |
 | `.env.example` | Example secrets file (copy to `.env`) |
 | `workspace/` | Identity/personality markdown files injected into the system prompt |
 
@@ -39,9 +39,11 @@ To customize personality: edit the files in `corey/workspace/` and rebuild. Or e
 
 ## How It Works
 
-The `docker-compose.yml` targets the `deploy` stage in the root `Dockerfile`. This stage builds on top of the `dev` stage, which compiles ZeroClaw from local source — so the binary always matches your codebase.
+The `docker-compose.yml` builds from `corey/Dockerfile`, which pulls the pre-built ZeroClaw binary from `ghcr.io/zeroclaw-labs/zeroclaw` and layers deploy tools on top (envsubst, git, gh, nodejs/npm, uv). No Rust compilation required — builds take ~30s instead of ~10min.
 
-The `deploy` stage adds `envsubst`, the config template, workspace files, and the entrypoint.
+Pin a specific version via `ZEROCLAW_VERSION` in `.env` (default: `latest`).
+
+The deploy layer adds `envsubst`, the config template, workspace files, and the entrypoint.
 
 At container startup, `entrypoint.sh`:
    - Copies workspace identity files to the volume (skip if already present)
