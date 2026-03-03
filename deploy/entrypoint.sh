@@ -21,6 +21,16 @@ for f in /etc/zeroclaw/workspace/*.md; do
   fi
 done
 
+# Configure git + GitHub CLI if token is available
+if [ -n "${GITHUB_TOKEN}" ]; then
+  git config --global credential.helper 'store'
+  git config --global user.name "${GIT_USER_NAME:-Dorey}"
+  git config --global user.email "${GIT_USER_EMAIL:-doreyortea@gmail.com}"
+  printf 'https://x-access-token:%s@github.com\n' "${GITHUB_TOKEN}" > "${HOME}/.git-credentials"
+  echo "${GITHUB_TOKEN}" | gh auth login --with-token 2>/dev/null || true
+  echo "==> Git + GitHub CLI configured"
+fi
+
 # Substitute env vars (secrets from .env) into the config template
 envsubst < "${TEMPLATE}" > "${CONFIG_FILE}"
 

@@ -154,13 +154,20 @@ USER root
 ENV PROVIDER=""
 ENV ZEROCLAW_MODEL=""
 
-# envsubst for config template secret injection; nodejs/npm for stdio MCP servers
+# envsubst for config template secret injection; git/gh for repo operations; nodejs/npm for stdio MCP servers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
+    git \
     nodejs npm \
     sudo \
     && rm -rf /var/lib/apt/lists/* \
     && echo 'ALL ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zeroclaw
+
+# Install GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY deploy/config.template.toml /etc/zeroclaw/config.template.toml
