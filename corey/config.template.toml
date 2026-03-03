@@ -29,7 +29,7 @@ auto_save = true
 
 [agent]
 compact_context = false
-max_tool_iterations = 9999999
+max_tool_iterations = 30
 max_history_messages = 50
 context_window_limit = 200000
 compaction_threshold_pct = 0.8
