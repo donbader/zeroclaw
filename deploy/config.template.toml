@@ -102,6 +102,7 @@ model = "claude-opus-4.6"
 
 [autonomy]
 level = "full"
+workspace_only = true
 
 # ── MCP Servers ────────────────────────────────────────────────────
 # Tools from MCP servers register as <server_name>__<tool_name>.
