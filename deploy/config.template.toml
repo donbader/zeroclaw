@@ -104,6 +104,7 @@ model = "claude-opus-4.6"
 level = "full"
 workspace_only = true
 allowed_commands = ["*"]
+non_cli_excluded_tools = []
 forbidden_paths = [
     "/etc",
     "/root",
