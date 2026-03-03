@@ -180,7 +180,7 @@ allowed_users = ["*"]
 stream_mode = "off"
 mention_only = true
 parse_mode = "HTML"
-interrupt_on_new_message = false
+interrupt_on_new_message = true
 ack_enabled = true
 
 # [channels_config.discord]
