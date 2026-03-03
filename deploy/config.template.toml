@@ -98,6 +98,11 @@ hint = "reasoning"
 provider = "custom:http://host.docker.internal:8765/v1"
 model = "claude-opus-4.6"
 
+# ── Autonomy ─────────────────────────────────────────────────────
+
+[autonomy]
+level = "full"
+
 # ── MCP Servers ────────────────────────────────────────────────────
 # Tools from MCP servers register as <server_name>__<tool_name>.
 # For Docker: prefer http/sse transports. Stdio needs binaries in the container.
