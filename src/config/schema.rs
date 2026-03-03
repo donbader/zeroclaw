@@ -4664,6 +4664,8 @@ pub enum StreamMode {
 pub enum ProgressMode {
     /// Show all progress lines (thinking rounds, tool-count lines, tool lifecycle).
     Verbose,
+    /// Verbose + nested sub-agent progress (tool calls grouped under agent name).
+    Hierarchical,
     /// Show only tool lifecycle lines (start + completion).
     #[default]
     Compact,
@@ -10824,10 +10826,12 @@ tool_dispatcher = "xml"
     #[test]
     async fn progress_mode_deserializes_variants() {
         let verbose: ProgressMode = serde_json::from_str(r#""verbose""#).unwrap();
+        let hierarchical: ProgressMode = serde_json::from_str(r#""hierarchical""#).unwrap();
         let compact: ProgressMode = serde_json::from_str(r#""compact""#).unwrap();
         let off: ProgressMode = serde_json::from_str(r#""off""#).unwrap();
 
         assert_eq!(verbose, ProgressMode::Verbose);
+        assert_eq!(hierarchical, ProgressMode::Hierarchical);
         assert_eq!(compact, ProgressMode::Compact);
         assert_eq!(off, ProgressMode::Off);
     }
