@@ -158,7 +158,9 @@ ENV ZEROCLAW_MODEL=""
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
     nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+    sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo 'ALL ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zeroclaw
 
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY deploy/config.template.toml /etc/zeroclaw/config.template.toml

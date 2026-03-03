@@ -16,6 +16,7 @@ Things like:
 - **shell** — Execute terminal commands
   - Use when: running local checks, build/test commands, or diagnostics.
   - Don't use when: a safer dedicated tool exists, or command is destructive without approval.
+  - **Installing packages:** You have passwordless sudo. Use `sudo apt-get update && sudo apt-get install -y <package>` to install anything you need at runtime (e.g. `gh`, `git`, `ripgrep`, `python3`).
 - **file_read** — Read file contents
   - Use when: inspecting project files, configs, or logs.
   - Don't use when: you only need a quick string search (prefer targeted search first).
