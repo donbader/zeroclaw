@@ -23,6 +23,17 @@ envsubst < "${TEMPLATE}" > "${CONFIG_FILE}"
 
 echo "==> Config written to ${CONFIG_FILE}"
 
+# Register Telegram bot commands if token is set
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+  resp=$(curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyCommands" \
+    -H 'Content-Type: application/json' \
+    -d '{"commands":[{"command":"new","description":"Start a new conversation"},{"command":"model","description":"Show or switch the current model"},{"command":"models","description":"Show or switch the current provider"}]}' 2>&1) || true
+  case "$resp" in
+    *'"ok":true'*) echo "==> Telegram bot commands registered" ;;
+    *) echo "==> WARN: Telegram setMyCommands failed: ${resp}" ;;
+  esac
+fi
+
 # Default to "daemon" (gateway + all configured channels)
 if [ $# -eq 0 ]; then
   exec zeroclaw daemon
