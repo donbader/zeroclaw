@@ -1,18 +1,16 @@
 # ZeroClaw — Dokploy-ready Docker Compose
 #
 # Usage:
-#   cd deploy && ./deploy.sh        (builds base + deploys)
-#   cd deploy && ./deploy.sh down   (stops everything)
-#
-# Manual two-step:
-#   docker build -t zeroclaw:dev --target dev -f ../Dockerfile ..
+#   cd deploy
+#   cp .env.example .env  # edit with real secrets
 #   docker compose up --build -d
 
 services:
   zeroclaw:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
+      dockerfile: Dockerfile
+      target: deploy
     container_name: zeroclaw
     restart: unless-stopped
     extra_hosts:

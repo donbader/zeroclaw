@@ -143,3 +143,27 @@ USER 65534:65534
 EXPOSE 42617
 ENTRYPOINT ["zeroclaw"]
 CMD ["gateway"]
+
+# ── Stage 4: Deploy (Dokploy / Docker Compose) ───────────────
+# Usage: docker compose up --build (from deploy/)
+FROM dev AS deploy
+
+USER root
+
+# envsubst for config template secret injection
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY deploy/config.template.toml /etc/zeroclaw/config.template.toml
+COPY deploy/workspace/ /etc/zeroclaw/workspace/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Clear stale dev config so entrypoint generates from template
+RUN rm -f /zeroclaw-data/.zeroclaw/config.toml \
+    && chown -R 65534:65534 /zeroclaw-data
+
+USER 65534:65534
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["daemon"]
