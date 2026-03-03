@@ -141,16 +141,10 @@ enabled = true
 # args = ["-y", "@modelcontextprotocol/server-filesystem", "/zeroclaw-data/workspace"]
 
 [[mcp.servers]]
-name = "github"
-transport = "http"
-url = "https://api.githubcopilot.com/mcp/"
-headers = { Authorization = "Bearer ${GITHUB_TOKEN}" }
-
-[[mcp.servers]]
 name = "exa"
-transport = "sse"
+transport = "http"
 url = "https://mcp.exa.ai/mcp"
-tool_timeout_secs = 30
+tool_timeout_secs = 60
 
 # ── Channels ─────────────────────────────────────────────────────
 
