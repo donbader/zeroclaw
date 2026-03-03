@@ -38,6 +38,7 @@ safety_heartbeat_interval = 5
 loop_detection_no_progress_threshold = 6
 loop_detection_ping_pong_cycles = 4
 loop_detection_failure_streak = 10
+persist_interrupted_progress = true
 
 [agent.session]
 backend = "sqlite"

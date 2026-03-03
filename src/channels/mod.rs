@@ -264,6 +264,7 @@ struct ChannelRuntimeDefaults {
     loop_detection_ping_pong_cycles: usize,
     loop_detection_failure_streak: usize,
     loop_detection_exempt_tools: Vec<String>,
+    persist_interrupted_progress: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1108,6 +1109,7 @@ fn runtime_defaults_from_config(config: &Config) -> ChannelRuntimeDefaults {
         loop_detection_ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
         loop_detection_failure_streak: config.agent.loop_detection_failure_streak,
         loop_detection_exempt_tools: config.agent.loop_detection_exempt_tools.clone(),
+        persist_interrupted_progress: config.agent.persist_interrupted_progress,
     }
 }
 
@@ -1165,7 +1167,11 @@ fn runtime_defaults_snapshot(ctx: &ChannelRuntimeContext) -> ChannelRuntimeDefau
         loop_detection_no_progress_threshold: LoopDetectionConfig::default().no_progress_threshold,
         loop_detection_ping_pong_cycles: LoopDetectionConfig::default().ping_pong_cycles,
         loop_detection_failure_streak: LoopDetectionConfig::default().failure_streak_threshold,
-        loop_detection_exempt_tools: LoopDetectionConfig::default().exempt_tools.into_iter().collect(),
+        loop_detection_exempt_tools: LoopDetectionConfig::default()
+            .exempt_tools
+            .into_iter()
+            .collect(),
+        persist_interrupted_progress: false,
     }
 }
 
@@ -3886,6 +3892,19 @@ or tune thresholds in config.",
             {
                 if let Err(err) = channel.cancel_draft(&msg.reply_target, draft_id).await {
                     tracing::debug!("Failed to cancel draft on {}: {err}", channel.name());
+                }
+            }
+            if runtime_defaults.persist_interrupted_progress {
+                let tool_summary =
+                    extract_tool_context_summary(&history, history_len_before_tools);
+                if !tool_summary.is_empty() {
+                    let interrupted_turn =
+                        format!("[Interrupted — partial progress]\n{tool_summary}");
+                    append_sender_turn(
+                        ctx.as_ref(),
+                        &history_key,
+                        ChatMessage::assistant(&interrupted_turn),
+                    );
                 }
             }
         }

@@ -1094,6 +1094,11 @@ pub struct AgentConfig {
     /// set to `0` for explicit disable.
     #[serde(default = "default_safety_heartbeat_turn_interval")]
     pub safety_heartbeat_turn_interval: usize,
+    /// When enabled, interrupted (cancelled) agent turns persist a summary of
+    /// completed tool calls into conversation history so the next turn retains
+    /// awareness of prior progress. Default: `false`.
+    #[serde(default)]
+    pub persist_interrupted_progress: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1216,6 +1221,7 @@ impl Default for AgentConfig {
             safety_heartbeat_turn_interval: default_safety_heartbeat_turn_interval(),
             context_window_limit: None,
             compaction_threshold_pct: default_compaction_threshold_pct(),
+            persist_interrupted_progress: false,
         }
     }
 }
