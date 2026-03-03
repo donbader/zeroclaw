@@ -98,6 +98,40 @@ hint = "reasoning"
 provider = "custom:http://host.docker.internal:8765/v1"
 model = "claude-opus-4.6"
 
+# ── MCP Servers ────────────────────────────────────────────────────
+# Tools from MCP servers register as <server_name>__<tool_name>.
+# For Docker: prefer http/sse transports. Stdio needs binaries in the container.
+
+[mcp]
+enabled = false
+
+# Example: HTTP transport (cleanest for Docker)
+# [[mcp.servers]]
+# name = "my-api"
+# transport = "http"
+# url = "http://host.docker.internal:3001/mcp"
+# headers = { Authorization = "Bearer ${MCP_API_KEY}" }
+# tool_timeout_secs = 30
+
+# Example: SSE transport
+# [[mcp.servers]]
+# name = "my-sse"
+# transport = "sse"
+# url = "http://host.docker.internal:3002/sse"
+
+# Example: Stdio transport (requires binary in container)
+# [[mcp.servers]]
+# name = "filesystem"
+# transport = "stdio"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "/zeroclaw-data/workspace"]
+
+# [[mcp.servers]]
+# name = "github"
+# transport = "stdio"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-github"]
+# env = { GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}" }
 # ── Channels ─────────────────────────────────────────────────────
 
 [channels_config]
