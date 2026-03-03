@@ -154,7 +154,7 @@ USER root
 ENV PROVIDER=""
 ENV ZEROCLAW_MODEL=""
 
-# envsubst for config template secret injection; git/gh for repo operations; nodejs/npm for stdio MCP servers
+# envsubst for config template secret injection; git/gh for repo operations; nodejs/npm for stdio MCP servers; uv for Python-based MCP servers (uvx)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y --no-install-recommends \
@@ -164,7 +164,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o 
     nodejs npm \
     sudo \
     && rm -rf /var/lib/apt/lists/* \
-    && echo 'ALL ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zeroclaw
+    && echo 'ALL ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zeroclaw \
+    && curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
 COPY corey/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY corey/config.template.toml /etc/zeroclaw/config.template.toml
