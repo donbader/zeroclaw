@@ -7,6 +7,11 @@ TEMPLATE="/etc/zeroclaw/config.template.toml"
 
 mkdir -p "${CONFIG_DIR}" /zeroclaw-data/workspace
 
+# Create workspace subdirectories (matches onboard wizard)
+for dir in sessions memory state cron skills; do
+  mkdir -p "/zeroclaw-data/workspace/${dir}"
+done
+
 # Copy workspace identity files (skip if already present from volume)
 for f in /etc/zeroclaw/workspace/*.md; do
   name=$(basename "$f")
