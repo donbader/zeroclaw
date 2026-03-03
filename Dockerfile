@@ -150,6 +150,10 @@ FROM dev AS deploy
 
 USER root
 
+# Clear dev-stage env defaults that would override config template values
+ENV PROVIDER=""
+ENV ZEROCLAW_MODEL=""
+
 # envsubst for config template secret injection
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
