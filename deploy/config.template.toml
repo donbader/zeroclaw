@@ -41,7 +41,7 @@ loop_detection_failure_streak = 10
 
 [agent.session]
 backend = "sqlite"
-strategy = "per-sender"
+strategy = "per-channel"
 ttl_seconds = 3600
 max_messages = 50
 
