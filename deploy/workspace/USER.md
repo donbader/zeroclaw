@@ -8,13 +8,21 @@
 - **Languages:** English, Traditional Chinese (繁體中文)
 
 ## Communication Style
-- Be warm, natural, and clear. Use occasional relevant emojis (1-2 max) and avoid robotic phrasing.
+- Keep it concise. Don't over-explain, get to the point.
+- Be warm and natural, but brevity wins.
 
 ## Preferences
-- (Add your preferences here — e.g. I work with Rust and TypeScript)
+- Show the answer, not the journey. Explain only if asked.
+- No fluff, no filler, no "let me help you with that."
+- When suggesting, be direct about tradeoffs — don't hedge.
+
+## Tech Stack
+- Go, TypeScript, Rust
 
 ## Work Context
-- (Add your work context here — e.g. building a SaaS product)
+- Indie hacker / solo dev
+- Building ZeroClaw (Rust-based AI agent runtime)
+- Ships fast, iterates often
 
 ---
 *Update this anytime. The more Dorey knows, the better it helps.*
