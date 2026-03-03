@@ -1,11 +1,10 @@
 # ZeroClaw — Dokploy-ready Docker Compose
 #
-# Set environment variables in Dokploy's UI, or create a .env file:
-#
-#   API_KEY=your-openrouter-or-provider-api-key
-#   TELEGRAM_BOT_TOKEN=123456:your-telegram-bot-token
-#
-# Then: docker compose up -d
+# 1. Edit config.template.toml for non-secret settings
+# 2. Create .env with secrets:
+#      API_KEY=sk-or-v1-...
+#      TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+# 3. docker compose up -d
 
 services:
   zeroclaw:
@@ -15,41 +14,14 @@ services:
     container_name: zeroclaw
     restart: unless-stopped
 
-    environment:
-      # ── Required ──────────────────────────────────────────
-      - API_KEY=${API_KEY:?Set your LLM provider API key}
-
-      # ── LLM Provider ─────────────────────────────────────
-      - PROVIDER=${PROVIDER:-openrouter}
-      - ZEROCLAW_MODEL=${ZEROCLAW_MODEL:-anthropic/claude-sonnet-4-20250514}
-      - ZEROCLAW_TEMPERATURE=${ZEROCLAW_TEMPERATURE:-0.7}
-      - ZEROCLAW_MEMORY_BACKEND=${ZEROCLAW_MEMORY_BACKEND:-markdown}
-
-      # ── Gateway ───────────────────────────────────────────
-      - ZEROCLAW_GATEWAY_PORT=${ZEROCLAW_GATEWAY_PORT:-42617}
-
-      # ── Telegram (set TELEGRAM_BOT_TOKEN to enable) ──────
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-*}
-      - TELEGRAM_STREAM_MODE=${TELEGRAM_STREAM_MODE:-off}
-      - TELEGRAM_MENTION_ONLY=${TELEGRAM_MENTION_ONLY:-false}
-      - TELEGRAM_INTERRUPT=${TELEGRAM_INTERRUPT:-false}
-      - TELEGRAM_ACK_ENABLED=${TELEGRAM_ACK_ENABLED:-true}
-      - TELEGRAM_GROUP_REPLY_MODE=${TELEGRAM_GROUP_REPLY_MODE:-}
-
-      # ── Discord (set DISCORD_BOT_TOKEN to enable) ────────
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
-      - DISCORD_ALLOWED_USERS=${DISCORD_ALLOWED_USERS:-*}
-      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID:-}
-
-      # ── Escape hatch: raw TOML appended to config ────────
-      - ZEROCLAW_EXTRA_CONFIG=${ZEROCLAW_EXTRA_CONFIG:-}
+    env_file:
+      - .env
 
     volumes:
       - zeroclaw-data:/zeroclaw-data
 
     ports:
-      - "${HOST_PORT:-42617}:${ZEROCLAW_GATEWAY_PORT:-42617}"
+      - "${HOST_PORT:-42617}:42617"
 
     deploy:
       resources:

@@ -1,0 +1,30 @@
+# ZeroClaw Config Template
+#
+# Secrets use ${VAR} placeholders — substituted at container startup via envsubst.
+# Non-secret values are hardcoded here. Edit this file directly for config changes.
+
+workspace_dir = "/zeroclaw-data/workspace"
+config_path = "/zeroclaw-data/.zeroclaw/config.toml"
+api_key = "${API_KEY}"
+default_provider = "openrouter"
+default_model = "anthropic/claude-sonnet-4-20250514"
+default_temperature = 0.7
+
+[gateway]
+port = 42617
+host = "0.0.0.0"
+allow_public_bind = true
+
+[memory]
+backend = "markdown"
+
+[channels_config]
+cli = false
+
+[channels_config.telegram]
+bot_token = "${TELEGRAM_BOT_TOKEN}"
+allowed_users = ["*"]
+stream_mode = "off"
+mention_only = false
+interrupt_on_new_message = false
+ack_enabled = true
