@@ -159,7 +159,6 @@ allowed_users = ["coreyortea", "shibatoshi", "jacobshan"]
 stream_mode = "partial"
 draft_update_interval_ms = 1000
 mention_only = true
-parse_mode = "HTML"
 interrupt_on_new_message = true
 ack_enabled = true
 
