@@ -3,13 +3,43 @@
 Skills define HOW tools work. This file is for YOUR specifics —
 the stuff that's unique to your setup.
 
-## What Goes Here
+## Environment
 
-Things like:
-- SSH hosts and aliases
-- Device nicknames
-- Preferred voices for TTS
-- Anything environment-specific
+- **Runtime:** ZeroClaw daemon inside Docker (Debian-based container)
+- **OS:** Debian (not Alpine, not distroless — you have a full shell and `apt-get`)
+- **Workspace:** `/zeroclaw-data/workspace/`
+- **Config:** `/zeroclaw-data/.zeroclaw/config.toml` (generated at boot, don't edit directly — edit `config.template.toml` instead)
+- **Workspace subdirs:** `sessions/`, `memory/`, `state/`, `cron/`, `skills/`
+
+## Networking
+
+- **Docker host access:** use `host.docker.internal` to reach services on the host machine
+- **Provider endpoint:** `http://host.docker.internal:8765/v1` (OpenAI-compatible, on the host)
+- **Gateway:** port 42617 (exposed to host)
+- **Health check:** `zeroclaw status`
+
+## MCP Servers (external tool integrations)
+
+These are registered in config and expose tools with prefixed names:
+
+- **github** — GitHub MCP via `https://api.githubcopilot.com/mcp/`
+  - Tools are prefixed `github__*`
+  - Auth: GitHub token (injected from `.env`)
+- **exa** — Exa web search via `https://mcp.exa.ai/mcp`
+  - Tools are prefixed `exa__*`
+  - Timeout: 30s
+
+## Delegate Agents
+
+ZeroClaw can route tasks to specialized sub-agents. You don't call them directly — the orchestration layer handles routing based on task type.
+
+| Agent | Model | Temp | Capabilities |
+|---|---|---|---|
+| `researcher` | claude-haiku-4.5 | 0.5 | research, analysis, summary, triage |
+| `coder` | claude-sonnet-4.6 | 0.2 | coding, refactor, debug, review |
+| `reasoner` | claude-opus-4.6 | 0.3 | reasoning, architecture, security, planning |
+
+Model routing hints: `fast` → haiku, `reasoning` → opus.
 
 ## Built-in Tools
 
