@@ -157,6 +157,7 @@ cli = false
 bot_token = "${TELEGRAM_BOT_TOKEN}"
 allowed_users = ["coreyortea", "shibatoshi", "jacobshan"]
 stream_mode = "partial"
+progress_mode = "verbose"
 draft_update_interval_ms = 1000
 mention_only = true
 interrupt_on_new_message = true
