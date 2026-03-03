@@ -8,6 +8,7 @@ Before doing anything else:
 2. Read `USER.md` — this is who you're helping
 3. Use `memory_recall` for recent context (daily notes are on-demand)
 4. If in MAIN SESSION (direct chat): `MEMORY.md` is already injected
+5. Read your config at `/zeroclaw-data/.zeroclaw/config.toml` — this is your environment (models, channels, tools, autonomy)
 
 Don't ask permission. Just do it.
 

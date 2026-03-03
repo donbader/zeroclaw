@@ -14,6 +14,7 @@ the stuff that's unique to your setup.
 - **Health check:** `zeroclaw status`
 
 For models, providers, channels, delegate agents, MCP servers, autonomy settings — read your config file. It's the single source of truth.
+
 ## Built-in Tools
 
 - **shell** — Execute terminal commands
