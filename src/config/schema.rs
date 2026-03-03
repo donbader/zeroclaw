@@ -1038,6 +1038,16 @@ pub struct AgentConfig {
     /// Maximum conversation history messages retained per session. Default: `50`.
     #[serde(default = "default_agent_max_history_messages")]
     pub max_history_messages: usize,
+    /// Context window size (in tokens) for the active model. When set, enables
+    /// token-based auto-compaction using actual `input_tokens` from the LLM API
+    /// response. Default: `None` (disabled — falls back to message-count trigger).
+    #[serde(default)]
+    pub context_window_limit: Option<u64>,
+    /// Fraction of `context_window_limit` at which auto-compaction fires.
+    /// E.g. 0.8 means compact when last prompt used ≥80% of the window.
+    /// Only effective when `context_window_limit` is set. Default: `0.8`.
+    #[serde(default = "default_compaction_threshold_pct")]
+    pub compaction_threshold_pct: f64,
     /// Enable parallel tool execution within a single iteration. Default: `false`.
     #[serde(default)]
     pub parallel_tools: bool,
@@ -1130,6 +1140,10 @@ fn default_agent_max_history_messages() -> usize {
     50
 }
 
+fn default_compaction_threshold_pct() -> f64 {
+    0.8
+}
+
 fn default_agent_tool_dispatcher() -> String {
     "auto".into()
 }
@@ -1186,6 +1200,8 @@ impl Default for AgentConfig {
             loop_detection_failure_streak: default_loop_detection_failure_streak(),
             safety_heartbeat_interval: default_safety_heartbeat_interval(),
             safety_heartbeat_turn_interval: default_safety_heartbeat_turn_interval(),
+            context_window_limit: None,
+            compaction_threshold_pct: default_compaction_threshold_pct(),
         }
     }
 }

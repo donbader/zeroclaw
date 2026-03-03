@@ -72,6 +72,7 @@ pub(super) async fn auto_compact_history(
     max_history: usize,
     hooks: Option<&crate::hooks::HookRunner>,
     memory: Option<&dyn Memory>,
+    token_compaction_triggered: bool,
 ) -> Result<bool> {
     let has_system = history.first().map_or(false, |m| m.role == "system");
     let non_system_count = if has_system {
@@ -80,7 +81,13 @@ pub(super) async fn auto_compact_history(
         history.len()
     };
 
-    if non_system_count <= max_history {
+    // Primary trigger: token-based (caller detected prompt_tokens >= threshold).
+    // Fallback trigger: message-count exceeds max_history.
+    if !token_compaction_triggered && non_system_count <= max_history {
+        return Ok(false);
+    }
+    // Even with token-based trigger, need enough messages to actually compact.
+    if non_system_count <= COMPACTION_KEEP_RECENT_MESSAGES {
         return Ok(false);
     }
 
@@ -314,6 +321,7 @@ mod tests {
             21,
             None,
             None,
+            false,
         )
         .await
         .expect("compaction should succeed");
@@ -478,6 +486,7 @@ mod tests {
             21,
             None,
             Some(mem.as_ref()),
+            false,
         )
         .await
         .expect("compaction should succeed");
@@ -616,6 +625,7 @@ mod tests {
             21,
             None,
             Some(mem.as_ref()),
+            false,
         )
         .await
         .expect("compaction should succeed");

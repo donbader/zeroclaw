@@ -127,6 +127,8 @@ Operational note for container users:
 | `compact_context` | `true` | When true: bootstrap_max_chars=6000, rag_chunk_limit=2. Use for 13B or smaller models |
 | `max_tool_iterations` | `20` | Maximum tool-call loop turns per user message across CLI, gateway, and channels |
 | `max_history_messages` | `50` | Maximum conversation history messages retained per session |
+| `context_window_limit` | *(none)* | Context window size in tokens for the active model. Enables token-based auto-compaction when set |
+| `compaction_threshold_pct` | `0.8` | Fraction of `context_window_limit` at which auto-compaction fires (e.g. 0.8 = 80%) |
 | `parallel_tools` | `false` | Enable parallel tool execution within a single iteration |
 | `tool_dispatcher` | `auto` | Tool dispatch strategy |
 | `loop_detection_no_progress_threshold` | `3` | Same tool+args producing identical output this many times triggers loop detection. `0` disables |

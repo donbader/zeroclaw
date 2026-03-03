@@ -76,6 +76,7 @@ pub use whatsapp::WhatsAppChannel;
 #[cfg(feature = "whatsapp-web")]
 pub use whatsapp_web::WhatsAppWebChannel;
 
+use crate::agent::loop_::detection::LoopDetectionConfig;
 use crate::agent::loop_::{
     build_shell_policy_instructions, build_tool_instructions_from_specs,
     run_tool_call_loop_with_non_cli_approval_context, scrub_credentials, NonCliApprovalContext,
@@ -259,6 +260,9 @@ struct ChannelRuntimeDefaults {
     multimodal: crate::config::MultimodalConfig,
     query_classification: crate::config::QueryClassificationConfig,
     model_routes: Vec<crate::config::ModelRouteConfig>,
+    loop_detection_no_progress_threshold: usize,
+    loop_detection_ping_pong_cycles: usize,
+    loop_detection_failure_streak: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1099,6 +1103,9 @@ fn runtime_defaults_from_config(config: &Config) -> ChannelRuntimeDefaults {
         multimodal: config.multimodal.clone(),
         query_classification: config.query_classification.clone(),
         model_routes: config.model_routes.clone(),
+        loop_detection_no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
+        loop_detection_ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
+        loop_detection_failure_streak: config.agent.loop_detection_failure_streak,
     }
 }
 
@@ -1153,6 +1160,9 @@ fn runtime_defaults_snapshot(ctx: &ChannelRuntimeContext) -> ChannelRuntimeDefau
         multimodal: ctx.multimodal.clone(),
         query_classification: ctx.query_classification.clone(),
         model_routes: ctx.model_routes.clone(),
+        loop_detection_no_progress_threshold: LoopDetectionConfig::default().no_progress_threshold,
+        loop_detection_ping_pong_cycles: LoopDetectionConfig::default().ping_pong_cycles,
+        loop_detection_failure_streak: LoopDetectionConfig::default().failure_streak_threshold,
     }
 }
 
@@ -3818,6 +3828,11 @@ or tune thresholds in config.",
                     &excluded_tools_snapshot,
                     progress_mode,
                     ctx.safety_heartbeat.clone(),
+                    LoopDetectionConfig {
+                        no_progress_threshold: runtime_defaults.loop_detection_no_progress_threshold,
+                        ping_pong_cycles: runtime_defaults.loop_detection_ping_pong_cycles,
+                        failure_streak_threshold: runtime_defaults.loop_detection_failure_streak,
+                    },
                 ),
             ),
         ) => LlmExecutionResult::Completed(result),
@@ -9568,6 +9583,12 @@ BTC is currently around $65,000 based on latest tool output."#
                         multimodal: crate::config::MultimodalConfig::default(),
                         query_classification: crate::config::QueryClassificationConfig::default(),
                         model_routes: Vec::new(),
+                        loop_detection_no_progress_threshold: LoopDetectionConfig::default()
+                            .no_progress_threshold,
+                        loop_detection_ping_pong_cycles: LoopDetectionConfig::default()
+                            .ping_pong_cycles,
+                        loop_detection_failure_streak: LoopDetectionConfig::default()
+                            .failure_streak_threshold,
                     },
                     perplexity_filter: crate::config::PerplexityFilterConfig::default(),
                     outbound_leak_guard: crate::config::OutboundLeakGuardConfig::default(),
