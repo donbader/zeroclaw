@@ -22,6 +22,7 @@ Pre-installed and pre-configured at boot (if `GITHUB_TOKEN` is set in `.env`):
 - **git** — clone, branch, commit, push. Credentials are auto-configured via token.
 - **gh** — GitHub CLI. Create PRs, manage issues, review code. Already authenticated.
 - **Git identity:** defaults to `Dorey <doreyortea@gmail.com>` (override via `GIT_USER_NAME` / `GIT_USER_EMAIL` in `.env`)
+- **git-master skill** — pre-installed at `skills/git-master/`. Covers atomic commits, rebase surgery, and history archaeology. Read `SKILL.md` inside for the full protocol.
 
 Typical workflow for contributing back to your own source:
 

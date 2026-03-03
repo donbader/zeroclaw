@@ -21,6 +21,19 @@ for f in /etc/zeroclaw/workspace/*.md; do
   fi
 done
 
+# Copy bundled skills (each skill is a directory under skills/)
+if [ -d /etc/zeroclaw/workspace/skills ]; then
+  for skill_dir in /etc/zeroclaw/workspace/skills/*/; do
+    [ -d "$skill_dir" ] || continue
+    skill_name=$(basename "$skill_dir")
+    target="/zeroclaw-data/workspace/skills/${skill_name}"
+    if [ "${RESET_WORKSPACE}" = "true" ] || [ ! -d "${target}" ]; then
+      rm -rf "${target}"
+      cp -r "$skill_dir" "${target}"
+    fi
+  done
+fi
+
 # Configure git + GitHub CLI if token is available
 if [ -n "${GITHUB_TOKEN}" ]; then
   git config --global credential.helper 'store'
