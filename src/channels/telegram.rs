@@ -3047,7 +3047,7 @@ impl Channel for TelegramChannel {
             // Send text (with attachments if any)
             if attachments.is_empty() {
                 self.send_text_chunks(
-                    &Self::markdown_to_telegram_html(text),
+                    text,
                     &chat_id,
                     thread_id.as_deref(),
                 )
