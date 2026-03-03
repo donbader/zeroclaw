@@ -67,7 +67,9 @@ capabilities = ["research", "analysis", "summary", "triage"]
 priority = 1
 temperature = 0.5
 max_depth = 3
-
+agentic = true
+allowed_tools = ["web_search_tool", "web_fetch", "memory_store", "memory_recall", "memory_observe"]
+max_iterations = 8
 [agents.coder]
 provider = "anthropic-custom:http://host.docker.internal:8765"
 model = "claude-sonnet-4.6"
@@ -76,7 +78,9 @@ capabilities = ["coding", "refactor", "debug", "review"]
 priority = 1
 temperature = 0.2
 max_depth = 2
-
+agentic = true
+allowed_tools = ["shell", "file_read", "file_write", "memory_store", "memory_recall"]
+max_iterations = 10
 [agents.reasoner]
 provider = "anthropic-custom:http://host.docker.internal:8765"
 model = "claude-opus-4.6"
@@ -85,7 +89,9 @@ capabilities = ["reasoning", "architecture", "security", "planning"]
 priority = 0
 temperature = 0.3
 max_depth = 1
-
+agentic = true
+allowed_tools = ["web_search_tool", "web_fetch", "memory_store", "memory_recall"]
+max_iterations = 6
 # ── Coordination ─────────────────────────────────────────────────
 
 [coordination]
