@@ -6,6 +6,10 @@ Scope: `deploy/` directory only.
 
 Dokploy-ready (or any Docker Compose platform) deployment for ZeroClaw. Config lives in a TOML template; secrets are injected from `.env` via `envsubst` at container startup.
 
+## Reference Configuration
+
+The canonical deployment settings (config template, compose file, env example, workspace files) live in the [`deploy/` folder on the `corey-setup` branch of `github.com/donbader/zeroclaw`](https://github.com/donbader/zeroclaw/tree/corey-setup/deploy). Use that as the source of truth when bootstrapping or updating this deployment.
+
 ## File Inventory
 
 | File | Role |
