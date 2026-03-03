@@ -1,0 +1,74 @@
+## Flox Environment Manifest -----------------------------------------
+##
+##   _Everything_ you need to know about the _manifest_ is here:
+##
+##   https://flox.dev/docs/reference/command-reference/manifest.toml/
+##
+## -------------------------------------------------------------------
+# Flox manifest version managed by Flox CLI
+version = 1
+
+
+## Install Packages --------------------------------------------------
+[install]
+# Rust toolchain — pinned to 1.87 to match Cargo.toml rust-version
+cargo.pkg-path = "cargo"
+cargo.version = "1.87.0"
+cargo.pkg-group = "rust-toolchain"
+rustc.pkg-path = "rustc"
+rustc.pkg-group = "rust-toolchain"
+clippy.pkg-path = "clippy"
+clippy.pkg-group = "rust-toolchain"
+rustfmt.pkg-path = "rustfmt"
+rustfmt.pkg-group = "rust-toolchain"
+rust-lib-src.pkg-path = "rustPlatform.rustLibSrc"
+rust-lib-src.pkg-group = "rust-toolchain"
+
+# rust-analyzer on its own cadence
+rust-analyzer.pkg-path = "rust-analyzer"
+rust-analyzer.pkg-group = "rust-analyzer"
+
+# Linker — macOS needs clang + libiconv, Linux needs gcc
+libiconv.pkg-path = "libiconv"
+libiconv.systems = ["aarch64-darwin", "x86_64-darwin"]
+clang.pkg-path = "clang"
+clang.systems = ["aarch64-darwin", "x86_64-darwin"]
+gcc.pkg-path = "gcc"
+gcc.systems = ["aarch64-linux", "x86_64-linux"]
+
+
+## Environment Variables ---------------------------------------------
+[vars]
+
+
+## Activation Hook ---------------------------------------------------
+[hook]
+on-activate = '''
+  export PATH="$PWD/target/debug:$PATH"
+'''
+
+
+## Profile script ----------------------------------------------------
+[profile]
+
+
+## Services ----------------------------------------------------------
+[services]
+
+
+## Include -----------------------------------------------------------
+[include]
+
+
+## Build -------------------------------------------------------------
+[build]
+
+
+## Other Environment Options -----------------------------------------
+[options]
+systems = [
+  "aarch64-darwin",
+  "aarch64-linux",
+  "x86_64-darwin",
+  "x86_64-linux",
+]
