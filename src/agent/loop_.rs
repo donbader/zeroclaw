@@ -271,11 +271,6 @@ pub(crate) const DRAFT_CLEAR_SENTINEL: &str = "\x00CLEAR\x00";
 pub(crate) const DRAFT_PROGRESS_SENTINEL: &str = "\x00PROGRESS\x00";
 /// Sentinel prefix for full in-place progress blocks.
 pub(crate) const DRAFT_PROGRESS_BLOCK_SENTINEL: &str = "\x00PROGRESS_BLOCK\x00";
-/// Sentinel prefix for a named in-place progress block (hierarchical mode).
-/// Format: `DRAFT_PROGRESS_NAMED_BLOCK_PREFIX + agent_name + "\x00"` followed by the block body.
-pub(crate) const DRAFT_PROGRESS_NAMED_BLOCK_PREFIX: &str = "\x00PROGRESS_BLOCK:";
-/// Terminator after the agent name in a named progress block sentinel.
-pub(crate) const DRAFT_PROGRESS_NAMED_BLOCK_SEP: &str = "\x00";
 /// Progress-section marker inserted into accumulated streaming drafts.
 pub(crate) const DRAFT_PROGRESS_SECTION_START: &str = "\n<!-- progress-start -->\n";
 /// Progress-section marker inserted into accumulated streaming drafts.
@@ -316,15 +311,8 @@ tokio::task_local! {
     static TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT: Option<NonCliApprovalContext>;
     static LOOP_DETECTION_CONFIG: LoopDetectionConfig;
     static SAFETY_HEARTBEAT_CONFIG: Option<SafetyHeartbeatConfig>;
-    pub(crate) static TOOL_LOOP_PROGRESS_MODE: ProgressMode;
+    static TOOL_LOOP_PROGRESS_MODE: ProgressMode;
     static TOOL_LOOP_COST_ENFORCEMENT_CONTEXT: Option<CostEnforcementContext>;
-    /// Parent delta sender exposed to sub-agent spawn tools so they can forward
-    /// child progress back to the draft updater when `Hierarchical` mode is active.
-    pub(crate) static TOOL_LOOP_DELTA_TX: Option<tokio::sync::mpsc::Sender<String>>;
-    /// Last `input_tokens` reported by the LLM provider in this tool-call loop.
-    /// Written inside `run_tool_call_loop` via atomic store; read by the caller
-    /// after the loop completes to drive token-based auto-compaction.
-    pub(crate) static LAST_PROMPT_INPUT_TOKENS: std::sync::Arc<std::sync::atomic::AtomicU64>;
 }
 
 /// Configuration for periodic safety-constraint re-injection (heartbeat).
@@ -391,17 +379,11 @@ fn should_inject_safety_heartbeat(counter: usize, interval: usize) -> bool {
 }
 
 fn should_emit_verbose_progress(mode: ProgressMode) -> bool {
-    mode == ProgressMode::Verbose || mode == ProgressMode::Hierarchical
+    mode == ProgressMode::Verbose
 }
 
 fn should_emit_tool_progress(mode: ProgressMode) -> bool {
     mode != ProgressMode::Off
-}
-
-/// Returns `true` when the caller should forward sub-agent progress to the
-/// parent draft updater (only in `Hierarchical` mode).
-pub(crate) fn should_forward_subagent_progress(mode: ProgressMode) -> bool {
-    mode == ProgressMode::Hierarchical
 }
 
 fn estimate_prompt_tokens(
@@ -957,32 +939,28 @@ pub(crate) async fn run_tool_call_loop_with_reply_target(
     excluded_tools: &[String],
     progress_mode: ProgressMode,
 ) -> Result<String> {
-    let delta_tx_for_scope = on_delta.clone();
-    TOOL_LOOP_DELTA_TX
+    TOOL_LOOP_PROGRESS_MODE
         .scope(
-            delta_tx_for_scope,
-            TOOL_LOOP_PROGRESS_MODE.scope(
-                progress_mode,
-                TOOL_LOOP_REPLY_TARGET.scope(
-                    reply_target.map(str::to_string),
-                    run_tool_call_loop(
-                        provider,
-                        history,
-                        tools_registry,
-                        observer,
-                        provider_name,
-                        model,
-                        temperature,
-                        silent,
-                        approval,
-                        channel_name,
-                        multimodal_config,
-                        max_tool_iterations,
-                        cancellation_token,
-                        on_delta,
-                        hooks,
-                        excluded_tools,
-                    ),
+            progress_mode,
+            TOOL_LOOP_REPLY_TARGET.scope(
+                reply_target.map(str::to_string),
+                run_tool_call_loop(
+                    provider,
+                    history,
+                    tools_registry,
+                    observer,
+                    provider_name,
+                    model,
+                    temperature,
+                    silent,
+                    approval,
+                    channel_name,
+                    multimodal_config,
+                    max_tool_iterations,
+                    cancellation_token,
+                    on_delta,
+                    hooks,
+                    excluded_tools,
                 ),
             ),
         )
@@ -1011,44 +989,37 @@ pub(crate) async fn run_tool_call_loop_with_non_cli_approval_context(
     excluded_tools: &[String],
     progress_mode: ProgressMode,
     safety_heartbeat: Option<SafetyHeartbeatConfig>,
-    loop_detection: LoopDetectionConfig,
 ) -> Result<String> {
     let reply_target = non_cli_approval_context
         .as_ref()
         .map(|ctx| ctx.reply_target.clone());
-    let delta_tx_for_scope = on_delta.clone();
-    TOOL_LOOP_DELTA_TX
+
+    TOOL_LOOP_PROGRESS_MODE
         .scope(
-            delta_tx_for_scope,
-            TOOL_LOOP_PROGRESS_MODE.scope(
-                progress_mode,
-                LOOP_DETECTION_CONFIG.scope(
-                    loop_detection,
-                    SAFETY_HEARTBEAT_CONFIG.scope(
-                        safety_heartbeat,
-                        TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT.scope(
-                            non_cli_approval_context,
-                            TOOL_LOOP_REPLY_TARGET.scope(
-                                reply_target,
-                                run_tool_call_loop(
-                                    provider,
-                                    history,
-                                    tools_registry,
-                                    observer,
-                                    provider_name,
-                                    model,
-                                    temperature,
-                                    silent,
-                                    approval,
-                                    channel_name,
-                                    multimodal_config,
-                                    max_tool_iterations,
-                                    cancellation_token,
-                                    on_delta,
-                                    hooks,
-                                    excluded_tools,
-                                ),
-                            ),
+            progress_mode,
+            SAFETY_HEARTBEAT_CONFIG.scope(
+                safety_heartbeat,
+                TOOL_LOOP_NON_CLI_APPROVAL_CONTEXT.scope(
+                    non_cli_approval_context,
+                    TOOL_LOOP_REPLY_TARGET.scope(
+                        reply_target,
+                        run_tool_call_loop(
+                            provider,
+                            history,
+                            tools_registry,
+                            observer,
+                            provider_name,
+                            model,
+                            temperature,
+                            silent,
+                            approval,
+                            channel_name,
+                            multimodal_config,
+                            max_tool_iterations,
+                            cancellation_token,
+                            on_delta,
+                            hooks,
+                            excluded_tools,
                         ),
                     ),
                 ),
@@ -1444,12 +1415,6 @@ pub async fn run_tool_call_loop(
                     .map(|u| (u.input_tokens, u.output_tokens))
                     .unwrap_or((None, None));
 
-                // Publish latest input_tokens for token-based compaction.
-                if let Some(tokens) = resp_input_tokens {
-                    let _ = LAST_PROMPT_INPUT_TOKENS
-                        .try_with(|arc| arc.store(tokens, std::sync::atomic::Ordering::Relaxed));
-                }
-
                 if let Some(reason) = stop_reason.as_ref() {
                     runtime_trace::record_event(
                         "stop_reason_observed",
@@ -1531,12 +1496,6 @@ pub async fn run_tool_call_loop(
                         resp_input_tokens = add_optional_u64(resp_input_tokens, usage.input_tokens);
                         resp_output_tokens =
                             add_optional_u64(resp_output_tokens, usage.output_tokens);
-                        // Update token-based compaction signal with accumulated total.
-                        if let Some(tokens) = resp_input_tokens {
-                            let _ = LAST_PROMPT_INPUT_TOKENS.try_with(|arc| {
-                                arc.store(tokens, std::sync::atomic::Ordering::Relaxed)
-                            });
-                        }
                     }
 
                     let next_text = continuation_resp.text_or_empty().to_string();
@@ -2813,12 +2772,6 @@ pub async fn run(
             no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
             ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
             failure_streak_threshold: config.agent.loop_detection_failure_streak,
-            exempt_tools: config
-                .agent
-                .loop_detection_exempt_tools
-                .iter()
-                .cloned()
-                .collect(),
         };
         let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
             Some(SafetyHeartbeatConfig {
@@ -3004,12 +2957,6 @@ pub async fn run(
                 no_progress_threshold: config.agent.loop_detection_no_progress_threshold,
                 ping_pong_cycles: config.agent.loop_detection_ping_pong_cycles,
                 failure_streak_threshold: config.agent.loop_detection_failure_streak,
-                exempt_tools: config
-                    .agent
-                    .loop_detection_exempt_tools
-                    .iter()
-                    .cloned()
-                    .collect(),
             };
             let hb_cfg = if config.agent.safety_heartbeat_interval > 0 {
                 Some(SafetyHeartbeatConfig {
@@ -3019,39 +2966,34 @@ pub async fn run(
             } else {
                 None
             };
-            let last_prompt_tokens = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
-            let response = match LAST_PROMPT_INPUT_TOKENS
-                .scope(
-                    std::sync::Arc::clone(&last_prompt_tokens),
-                    scope_cost_enforcement_context(
-                        cost_enforcement_context.clone(),
-                        SAFETY_HEARTBEAT_CONFIG.scope(
-                            hb_cfg,
-                            LOOP_DETECTION_CONFIG.scope(
-                                ld_cfg,
-                                run_tool_call_loop(
-                                    provider.as_ref(),
-                                    &mut history,
-                                    &tools_registry,
-                                    observer.as_ref(),
-                                    provider_name,
-                                    &model_name,
-                                    temperature,
-                                    false,
-                                    approval_manager.as_ref(),
-                                    channel_name,
-                                    &config.multimodal,
-                                    config.agent.max_tool_iterations,
-                                    None,
-                                    None,
-                                    effective_hooks,
-                                    &[],
-                                ),
-                            ),
+            let response = match scope_cost_enforcement_context(
+                cost_enforcement_context.clone(),
+                SAFETY_HEARTBEAT_CONFIG.scope(
+                    hb_cfg,
+                    LOOP_DETECTION_CONFIG.scope(
+                        ld_cfg,
+                        run_tool_call_loop(
+                            provider.as_ref(),
+                            &mut history,
+                            &tools_registry,
+                            observer.as_ref(),
+                            provider_name,
+                            &model_name,
+                            temperature,
+                            false,
+                            approval_manager.as_ref(),
+                            channel_name,
+                            &config.multimodal,
+                            config.agent.max_tool_iterations,
+                            None,
+                            None,
+                            effective_hooks,
+                            &[],
                         ),
                     ),
-                )
-                .await
+                ),
+            )
+            .await
             {
                 Ok(resp) => resp,
                 Err(e) => {
@@ -3101,16 +3043,6 @@ pub async fn run(
             observer.record_event(&ObserverEvent::TurnComplete);
 
             // Auto-compaction before hard trimming to preserve long-context signal.
-            // Primary trigger: token-based (when context_window_limit is configured).
-            // Fallback trigger: message-count (always active).
-            let token_compaction_needed = if let Some(limit) = config.agent.context_window_limit {
-                let threshold =
-                    (limit as f64 * config.agent.compaction_threshold_pct).max(0.0) as u64;
-                let tokens = last_prompt_tokens.load(std::sync::atomic::Ordering::Relaxed);
-                tokens > 0 && tokens >= threshold
-            } else {
-                false
-            };
             if let Ok(compacted) = auto_compact_history(
                 &mut history,
                 provider.as_ref(),
@@ -3118,7 +3050,6 @@ pub async fn run(
                 config.agent.max_history_messages,
                 effective_hooks,
                 Some(mem.as_ref()),
-                token_compaction_needed,
             )
             .await
             {
@@ -4302,7 +4233,6 @@ mod tests {
             &[],
             ProgressMode::Verbose,
             None,
-            LoopDetectionConfig::default(),
         )
         .await
         .expect("tool loop should continue after non-cli approval");
@@ -6964,19 +6894,12 @@ Let me check the result."#;
     #[test]
     fn progress_mode_gates_work_as_expected() {
         assert!(should_emit_verbose_progress(ProgressMode::Verbose));
-        assert!(should_emit_verbose_progress(ProgressMode::Hierarchical));
         assert!(!should_emit_verbose_progress(ProgressMode::Compact));
         assert!(!should_emit_verbose_progress(ProgressMode::Off));
 
         assert!(should_emit_tool_progress(ProgressMode::Verbose));
-        assert!(should_emit_tool_progress(ProgressMode::Hierarchical));
         assert!(should_emit_tool_progress(ProgressMode::Compact));
         assert!(!should_emit_tool_progress(ProgressMode::Off));
-
-        assert!(!should_forward_subagent_progress(ProgressMode::Verbose));
-        assert!(should_forward_subagent_progress(ProgressMode::Hierarchical));
-        assert!(!should_forward_subagent_progress(ProgressMode::Compact));
-        assert!(!should_forward_subagent_progress(ProgressMode::Off));
     }
 
     #[test]

@@ -1013,21 +1013,13 @@ impl TelegramChannel {
         });
 
         let resp = self.http_client().post(&url).json(&body).send().await?;
-        let status = resp.status();
-        let text = resp.text().await.unwrap_or_default();
 
-        // Telegram Bot API returns HTTP 200 even on logical failures,
-        // so we must check the JSON body's "ok" field.
-        let parsed = serde_json::from_str::<serde_json::Value>(&text).ok();
-        let api_ok = parsed
-            .as_ref()
-            .and_then(|v| v.get("ok"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        if !status.is_success() || !api_ok {
-            let detail = parsed
-                .as_ref()
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            // Only log Telegram's error_code and description, not the full body
+            let detail = serde_json::from_str::<serde_json::Value>(&text)
+                .ok()
                 .and_then(|v| {
                     let code = v.get("error_code");
                     let desc = v.get("description").and_then(|d| d.as_str());
@@ -1042,6 +1034,7 @@ impl TelegramChannel {
         } else {
             tracing::info!("Telegram bot commands registered successfully");
         }
+
         Ok(())
     }
 
@@ -2128,15 +2121,6 @@ Allowlist Telegram username (without '@') or numeric user ID.",
                         continue;
                     }
                 }
-                // Spoiler: ||text||
-                if i + 1 < len && bytes[i] == b'|' && bytes[i + 1] == b'|' {
-                    if let Some(end) = line[i + 2..].find("||") {
-                        let inner = Self::escape_html(&line[i + 2..i + 2 + end]);
-                        write!(line_out, "<tg-spoiler>{inner}</tg-spoiler>").unwrap();
-                        i += 4 + end;
-                        continue;
-                    }
-                }
                 // Default: escape HTML entities
                 let ch = line[i..].chars().next().unwrap();
                 match ch {
@@ -2813,6 +2797,7 @@ Allowlist Telegram username (without '@') or numeric user ID.",
             .await
     }
 }
+
 #[async_trait]
 impl Channel for TelegramChannel {
     fn name(&self) -> &str {
@@ -2835,7 +2820,6 @@ impl Channel for TelegramChannel {
             message.content.clone()
         };
 
-        // sendMessage + editMessageText
         let mut body = serde_json::json!({
             "chat_id": chat_id,
             "text": initial_text,
@@ -2877,7 +2861,7 @@ impl Channel for TelegramChannel {
         message_id: &str,
         text: &str,
     ) -> anyhow::Result<Option<String>> {
-        let (chat_id, thread_id) = Self::parse_reply_target(recipient);
+        let (chat_id, _) = Self::parse_reply_target(recipient);
 
         // Rate-limit edits per chat
         {
@@ -2905,7 +2889,6 @@ impl Channel for TelegramChannel {
             text
         };
 
-        // editMessageText path
         let message_id_parsed = match message_id.parse::<i64>() {
             Ok(id) => id,
             Err(e) => {
@@ -2956,7 +2939,7 @@ impl Channel for TelegramChannel {
         // Parse attachments before processing
         let (text_without_markers, attachments) = parse_attachment_markers(text);
 
-        // editMessageText path
+        // Parse message ID once for reuse
         let msg_id = match message_id.parse::<i64>() {
             Ok(id) => Some(id),
             Err(e) => {
@@ -3123,6 +3106,7 @@ impl Channel for TelegramChannel {
     async fn cancel_draft(&self, recipient: &str, message_id: &str) -> anyhow::Result<()> {
         let (chat_id, _) = Self::parse_reply_target(recipient);
         self.last_draft_edit.lock().remove(&chat_id);
+
         let message_id = match message_id.parse::<i64>() {
             Ok(id) => id,
             Err(e) => {
@@ -3130,6 +3114,7 @@ impl Channel for TelegramChannel {
                 return Ok(());
             }
         };
+
         let response = self
             .client
             .post(self.api_url("deleteMessage"))
@@ -3139,12 +3124,14 @@ impl Channel for TelegramChannel {
             }))
             .send()
             .await?;
+
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             let sanitized = Self::sanitize_telegram_error(&body);
             tracing::debug!("Telegram deleteMessage failed ({status}): {sanitized}");
         }
+
         Ok(())
     }
 

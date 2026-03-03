@@ -31,14 +31,11 @@ auto_save = true
 compact_context = false
 max_tool_iterations = 30
 max_history_messages = 50
-context_window_limit = 200000
-compaction_threshold_pct = 0.8
 parallel_tools = true
 safety_heartbeat_interval = 5
 loop_detection_no_progress_threshold = 6
 loop_detection_ping_pong_cycles = 4
 loop_detection_failure_streak = 10
-persist_interrupted_progress = true
 
 [agent.session]
 backend = "sqlite"
@@ -187,7 +184,7 @@ cli = false
 bot_token = "${TELEGRAM_BOT_TOKEN}"
 allowed_users = ["coreyortea", "shibatoshi", "jacobshan"]
 stream_mode = "partial"
-progress_mode = "hierarchical"
+progress_mode = "compact"
 draft_update_interval_ms = 1000
 mention_only = true
 interrupt_on_new_message = true

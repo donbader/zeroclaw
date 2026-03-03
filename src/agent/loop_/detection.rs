@@ -8,7 +8,7 @@
 //! On first detection an `InjectWarning` verdict gives the LLM a chance to
 //! self-correct.  If the pattern persists the next check returns `HardStop`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// Maximum bytes of tool output considered when hashing results.
@@ -29,9 +29,6 @@ pub(crate) struct LoopDetectionConfig {
     /// Consecutive failures of the *same* tool before triggering.
     /// `0` = disabled.  Default: `3`.
     pub failure_streak_threshold: usize,
-    /// Tools exempt from loop detection (e.g. status-polling tools).
-    /// Calls to these tools are silently skipped by `record_call`.
-    pub exempt_tools: HashSet<String>,
 }
 
 impl Default for LoopDetectionConfig {
@@ -40,14 +37,6 @@ impl Default for LoopDetectionConfig {
             no_progress_threshold: 3,
             ping_pong_cycles: 2,
             failure_streak_threshold: 3,
-            exempt_tools: [
-                "subagent_manage",
-                "subagent_list",
-                "delegate_coordination_status",
-            ]
-            .into_iter()
-            .map(String::from)
-            .collect(),
         }
     }
 }
@@ -100,10 +89,6 @@ impl LoopDetector {
     /// * `output`    — raw tool output text.
     /// * `success`   — whether the tool reported success.
     pub fn record_call(&mut self, tool_name: &str, args_sig: &str, output: &str, success: bool) {
-        if self.config.exempt_tools.contains(tool_name) {
-            return;
-        }
-
         let result_hash = hash_output(output);
         self.history.push(CallRecord {
             tool_name: tool_name.to_owned(),
@@ -272,7 +257,6 @@ mod tests {
             no_progress_threshold: 0,
             ping_pong_cycles: 0,
             failure_streak_threshold: 0,
-            exempt_tools: HashSet::new(),
         }
     }
 
@@ -425,50 +409,5 @@ mod tests {
         let mixed = "a".repeat(4094) + "文文"; // 4094 + 6 = 4100 bytes, boundary at 4096
         let hash3 = super::hash_output(&mixed);
         assert!(hash3 != 0); // Just verify it runs
-    }
-
-    // 12. Exempt tools are not recorded — no false positive on polling
-    #[test]
-    fn exempt_tool_not_recorded() {
-        let config = LoopDetectionConfig {
-            exempt_tools: ["subagent_manage".to_string()].into_iter().collect(),
-            ..default_config()
-        };
-        let mut det = LoopDetector::new(config);
-        for _ in 0..20 {
-            det.record_call(
-                "subagent_manage",
-                r#"{"session_id":"s1","action":"status"}"#,
-                "{\"status\":\"running\"}",
-                true,
-            );
-        }
-        assert_eq!(det.check(), DetectionVerdict::Continue);
-    }
-
-    // 13. Non-exempt tool still triggers normally alongside exempt calls
-    #[test]
-    fn non_exempt_tool_still_triggers() {
-        let config = LoopDetectionConfig {
-            exempt_tools: ["subagent_manage".to_string()].into_iter().collect(),
-            ..default_config()
-        };
-        let mut det = LoopDetector::new(config);
-        // Exempt calls — should be ignored
-        det.record_call("subagent_manage", r#"{"action":"status"}"#, "running", true);
-        // Non-exempt calls — should trigger
-        for _ in 0..3 {
-            det.record_call("echo", r#"{"msg":"hi"}"#, "same", true);
-        }
-        assert!(matches!(det.check(), DetectionVerdict::InjectWarning(_)));
-    }
-
-    // 14. Default config includes subagent polling tools as exempt
-    #[test]
-    fn default_exempt_tools_include_subagent_tools() {
-        let config = default_config();
-        assert!(config.exempt_tools.contains("subagent_manage"));
-        assert!(config.exempt_tools.contains("subagent_list"));
-        assert!(config.exempt_tools.contains("delegate_coordination_status"));
     }
 }

@@ -408,7 +408,7 @@ impl Agent {
     async fn execute_tool_call(&self, call: &ParsedToolCall) -> ToolExecutionResult {
         let start = Instant::now();
 
-        let result = if let Some(tool) = self.tools.iter().find(|t| t.name() == call.name) {
+        let (result, success) = if let Some(tool) = self.tools.iter().find(|t| t.name() == call.name) {
             match tool.execute(call.arguments.clone()).await {
                 Ok(r) => {
                     self.observer.record_event(&ObserverEvent::ToolCall {
@@ -417,9 +417,9 @@ impl Agent {
                         success: r.success,
                     });
                     if r.success {
-                        r.output
+                        (r.output, true)
                     } else {
-                        format!("Error: {}", r.error.unwrap_or(r.output))
+                        (format!("Error: {}", r.error.unwrap_or(r.output)), false)
                     }
                 }
                 Err(e) => {
@@ -428,17 +428,17 @@ impl Agent {
                         duration: start.elapsed(),
                         success: false,
                     });
-                    format!("Error executing {}: {e}", call.name)
+                    (format!("Error executing {}: {e}", call.name), false)
                 }
             }
         } else {
-            format!("Unknown tool: {}", call.name)
+            (format!("Unknown tool: {}", call.name), false)
         };
 
         ToolExecutionResult {
             name: call.name.clone(),
             output: result,
-            success: true,
+            success,
             tool_call_id: call.tool_call_id.clone(),
         }
     }
@@ -573,12 +573,6 @@ impl Agent {
             no_progress_threshold: self.config.loop_detection_no_progress_threshold,
             ping_pong_cycles: self.config.loop_detection_ping_pong_cycles,
             failure_streak_threshold: self.config.loop_detection_failure_streak,
-            exempt_tools: self
-                .config
-                .loop_detection_exempt_tools
-                .iter()
-                .cloned()
-                .collect(),
         });
 
         for iteration in 0..self.config.max_tool_iterations {

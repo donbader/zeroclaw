@@ -1038,16 +1038,6 @@ pub struct AgentConfig {
     /// Maximum conversation history messages retained per session. Default: `50`.
     #[serde(default = "default_agent_max_history_messages")]
     pub max_history_messages: usize,
-    /// Context window size (in tokens) for the active model. When set, enables
-    /// token-based auto-compaction using actual `input_tokens` from the LLM API
-    /// response. Default: `None` (disabled — falls back to message-count trigger).
-    #[serde(default)]
-    pub context_window_limit: Option<u64>,
-    /// Fraction of `context_window_limit` at which auto-compaction fires.
-    /// E.g. 0.8 means compact when last prompt used ≥80% of the window.
-    /// Only effective when `context_window_limit` is set. Default: `0.8`.
-    #[serde(default = "default_compaction_threshold_pct")]
-    pub compaction_threshold_pct: f64,
     /// Enable parallel tool execution within a single iteration. Default: `false`.
     #[serde(default)]
     pub parallel_tools: bool,
@@ -1075,11 +1065,6 @@ pub struct AgentConfig {
     /// Set to `0` to disable. Default: `3`.
     #[serde(default = "default_loop_detection_failure_streak")]
     pub loop_detection_failure_streak: usize,
-    /// Loop detection: tools exempt from all detection strategies.
-    /// Calls to these tools are silently skipped by the loop detector.
-    /// Default: `["subagent_manage", "subagent_list", "delegate_coordination_status"]`.
-    #[serde(default = "default_loop_detection_exempt_tools")]
-    pub loop_detection_exempt_tools: Vec<String>,
     /// Safety heartbeat injection interval inside `run_tool_call_loop`.
     /// Injects a security-constraint reminder every N tool iterations.
     /// Set to `0` to disable. Default: `5`.
@@ -1094,11 +1079,6 @@ pub struct AgentConfig {
     /// set to `0` for explicit disable.
     #[serde(default = "default_safety_heartbeat_turn_interval")]
     pub safety_heartbeat_turn_interval: usize,
-    /// When enabled, interrupted (cancelled) agent turns persist a summary of
-    /// completed tool calls into conversation history so the next turn retains
-    /// awareness of prior progress. Default: `false`.
-    #[serde(default)]
-    pub persist_interrupted_progress: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -1150,10 +1130,6 @@ fn default_agent_max_history_messages() -> usize {
     50
 }
 
-fn default_compaction_threshold_pct() -> f64 {
-    0.8
-}
-
 fn default_agent_tool_dispatcher() -> String {
     "auto".into()
 }
@@ -1186,14 +1162,6 @@ fn default_loop_detection_failure_streak() -> usize {
     3
 }
 
-fn default_loop_detection_exempt_tools() -> Vec<String> {
-    vec![
-        "subagent_manage".to_string(),
-        "subagent_list".to_string(),
-        "delegate_coordination_status".to_string(),
-    ]
-}
-
 fn default_safety_heartbeat_interval() -> usize {
     5
 }
@@ -1216,12 +1184,8 @@ impl Default for AgentConfig {
             loop_detection_no_progress_threshold: default_loop_detection_no_progress_threshold(),
             loop_detection_ping_pong_cycles: default_loop_detection_ping_pong_cycles(),
             loop_detection_failure_streak: default_loop_detection_failure_streak(),
-            loop_detection_exempt_tools: default_loop_detection_exempt_tools(),
             safety_heartbeat_interval: default_safety_heartbeat_interval(),
             safety_heartbeat_turn_interval: default_safety_heartbeat_turn_interval(),
-            context_window_limit: None,
-            compaction_threshold_pct: default_compaction_threshold_pct(),
-            persist_interrupted_progress: false,
         }
     }
 }
@@ -4664,8 +4628,6 @@ pub enum StreamMode {
 pub enum ProgressMode {
     /// Show all progress lines (thinking rounds, tool-count lines, tool lifecycle).
     Verbose,
-    /// Verbose + nested sub-agent progress (tool calls grouped under agent name).
-    Hierarchical,
     /// Show only tool lifecycle lines (start + completion).
     #[default]
     Compact,
@@ -10826,12 +10788,10 @@ tool_dispatcher = "xml"
     #[test]
     async fn progress_mode_deserializes_variants() {
         let verbose: ProgressMode = serde_json::from_str(r#""verbose""#).unwrap();
-        let hierarchical: ProgressMode = serde_json::from_str(r#""hierarchical""#).unwrap();
         let compact: ProgressMode = serde_json::from_str(r#""compact""#).unwrap();
         let off: ProgressMode = serde_json::from_str(r#""off""#).unwrap();
 
         assert_eq!(verbose, ProgressMode::Verbose);
-        assert_eq!(hierarchical, ProgressMode::Hierarchical);
         assert_eq!(compact, ProgressMode::Compact);
         assert_eq!(off, ProgressMode::Off);
     }
