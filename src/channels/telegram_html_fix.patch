@@ -1,0 +1,17 @@
+This file documents the fix applied to telegram.rs.
+
+Problem:
+  markdown_to_telegram_html() escapes all '<' characters to '&lt;',
+  including valid Telegram HTML tags like <b>, <tg-spoiler> that the
+  LLM outputs directly per the system prompt instructions.
+
+Fix:
+  Added try_telegram_html_tag_len() helper that recognises whitelisted
+  Telegram HTML tags and returns their byte length. In the inline
+  character loop, before falling through to HTML escaping, we check
+  if the current '<' starts a valid tag and pass it through verbatim.
+
+Whitelisted tags (open + close):
+  b, i, u, s, code, pre, tg-spoiler, a
+
+Non-whitelisted tags (e.g. <tag>, <script>) are still escaped.
