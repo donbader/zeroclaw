@@ -2,6 +2,8 @@
 #
 # Secrets use ${VAR} placeholders — substituted at container startup via envsubst.
 # Non-secret values are hardcoded here. Edit this file directly for config changes.
+#
+# Sections omitted here use built-in defaults. Only override what you need.
 
 workspace_dir = "/zeroclaw-data/workspace"
 config_path = "/zeroclaw-data/.zeroclaw/config.toml"
@@ -26,37 +28,34 @@ auto_save = true
 # ── Agent Orchestration ──────────────────────────────────────────
 
 [agent]
-compact_context = false          # true = smaller context for 13B or smaller models
-max_tool_iterations = 20         # max tool-call loop turns per user message
-max_history_messages = 50        # conversation history retained per session
-parallel_tools = false           # parallel tool execution within a single iteration
-safety_heartbeat_interval = 5    # inject security reminder every N tool iterations
+compact_context = false
+max_tool_iterations = 20
+max_history_messages = 50
+parallel_tools = false
+safety_heartbeat_interval = 5
 
 [agent.session]
-backend = "sqlite"               # "memory", "sqlite", or "none"
-strategy = "per-sender"          # "per-sender", "per-channel", or "main"
+backend = "sqlite"
+strategy = "per-sender"
 ttl_seconds = 3600
 max_messages = 50
 
 [agent.teams]
-enabled = true                   # master switch for synchronous delegation
-auto_activate = true             # agent auto-selects specialist without explicit name
+enabled = true
+auto_activate = true
 max_agents = 32
-strategy = "adaptive"            # "semantic", "adaptive", or "least_loaded"
+strategy = "adaptive"
 
 [agent.subagents]
-enabled = true                   # master switch for async background workers
+enabled = true
 auto_activate = true
 max_concurrent = 10
 
 # ── Delegate Agents ──────────────────────────────────────────────
-# Each [agents.<name>] defines a specialist the lead agent can delegate to.
-# The lead agent uses default_provider/default_model above (sonnet).
-# Different models per agent = the whole point of delegation.
 
 [agents.researcher]
 provider = "custom:http://host.docker.internal:8765/v1"
-model = "claude-haiku-4.5"                # fast & cheap for info gathering
+model = "claude-haiku-4.5"
 system_prompt = "You are a research specialist. Provide thorough, well-sourced analysis. Focus on accuracy and completeness. Be concise."
 capabilities = ["research", "analysis", "summary", "triage"]
 priority = 1
@@ -65,7 +64,7 @@ max_depth = 3
 
 [agents.coder]
 provider = "custom:http://host.docker.internal:8765/v1"
-model = "claude-sonnet-4-20250514"        # strong for code quality
+model = "claude-sonnet-4-20250514"
 system_prompt = "You are a coding specialist. Write clean, correct, minimal code. Follow existing patterns. No unnecessary abstractions."
 capabilities = ["coding", "refactor", "debug", "review"]
 priority = 1
@@ -74,104 +73,20 @@ max_depth = 2
 
 [agents.reasoner]
 provider = "custom:http://host.docker.internal:8765/v1"
-model = "claude-opus-4.6"                 # heavy reasoning for hard problems
+model = "claude-opus-4.6"
 system_prompt = "You are a deep reasoning specialist. Think step by step. Consider edge cases. Provide thorough analysis with clear conclusions."
 capabilities = ["reasoning", "architecture", "security", "planning"]
 priority = 0
 temperature = 0.3
 max_depth = 1
 
-# Agentic sub-agent example (gets its own tool-call loop):
-# [agents.executor]
-# provider = "custom:http://host.docker.internal:8765/v1"
-# model = "claude-sonnet-4-20250514"
-# system_prompt = "You are a task executor with tool access."
-# capabilities = ["execution", "automation"]
-# agentic = true
-# allowed_tools = ["shell", "file_read", "file_write"]
-# max_iterations = 10
-# max_depth = 2
-
 # ── Coordination ─────────────────────────────────────────────────
 
 [coordination]
-enabled = true                   # typed message bus for delegate tracing
+enabled = true
 lead_agent = "delegate-lead"
 
-# ── Autonomy & Security ─────────────────────────────────────────
-
-[autonomy]
-level = "supervised"             # "read_only", "supervised", or "full"
-workspace_only = true
-max_actions_per_hour = 100
-max_cost_per_day_cents = 1000
-require_approval_for_medium_risk = true
-block_high_risk_commands = true
-forbidden_paths = [
-    "/etc", "/root", "/home", "/usr", "/bin", "/sbin",
-    "/lib", "/opt", "/boot", "/dev", "/proc", "/sys",
-    "/var", "/tmp", "/mnt",
-    "~/.ssh", "~/.gnupg", "~/.aws", "~/.config",
-]
-allowed_commands = [
-    "ls", "cat", "head", "tail", "grep", "find", "wc",
-    "git", "curl", "wget",
-    "python3", "pip", "node", "npm", "npx",
-    "cargo", "rustc", "rustfmt",
-    "docker", "docker-compose",
-    "date", "echo", "env", "which", "whoami",
-    "mkdir", "cp", "mv", "rm", "touch", "chmod",
-    "tar", "gzip", "gunzip", "zip", "unzip",
-    "sed", "awk", "sort", "uniq", "diff", "jq",
-]
-auto_approve = ["file_read", "memory_recall"]
-# Tools excluded from non-CLI channels (Telegram, Discord, etc.)
-non_cli_excluded_tools = [
-    "shell", "process", "file_write", "file_edit",
-    "git_operations", "browser", "browser_open",
-    "http_request", "delegate",
-]
-
-# ── Security ─────────────────────────────────────────────────────
-
-[security]
-
-[security.outbound_leak_guard]
-enabled = true                   # scan outbound messages for credential leaks
-action = "redact"                # "redact" or "block"
-
-[security.url_access]
-block_private_ip = true
-allow_loopback = false
-
-# ── Reliability ──────────────────────────────────────────────────
-
-[reliability]
-provider_retries = 2
-provider_backoff_ms = 1000
-# fallback_providers = ["anthropic", "openai"]  # uncomment to enable failover chain
-
-# ── Observability ────────────────────────────────────────────────
-
-[observability]
-backend = "log"                  # "none", "log", "prometheus", or "otel"
-runtime_trace_mode = "rolling"   # "none", "rolling", or "full"
-runtime_trace_max_entries = 200
-
-# ── Cost Tracking ────────────────────────────────────────────────
-
-[cost]
-enabled = false                  # enable to track token spend
-daily_limit_usd = 10.0
-monthly_limit_usd = 100.0
-warn_at_percent = 80
-
-[cost.enforcement]
-mode = "warn"                    # "warn", "route_down", or "block"
-
 # ── Model Routing ────────────────────────────────────────────────
-# Route hint:<name> to specific provider+model combos.
-# Usage: pass "hint:fast" or "hint:reasoning" as model parameter.
 
 [[model_routes]]
 hint = "fast"
@@ -182,87 +97,6 @@ model = "claude-haiku-4.5"
 hint = "reasoning"
 provider = "custom:http://host.docker.internal:8765/v1"
 model = "claude-opus-4.6"
-
-# ── Research Phase ───────────────────────────────────────────────
-
-[research]
-enabled = false                  # proactive info gathering before responding
-trigger = "never"                # "never", "always", "keywords", "length", "question"
-max_iterations = 5
-
-# ── Web Fetch ────────────────────────────────────────────────────
-
-[web_fetch]
-enabled = true
-provider = "fast_html2md"
-allowed_domains = ["*"]
-timeout_secs = 30
-
-# ── Web Search ───────────────────────────────────────────────────
-
-[web_search]
-enabled = true
-provider = "duckduckgo"          # free, no API key needed
-max_results = 5
-timeout_secs = 15
-# For better results, switch to tavily/brave/exa and add api_key
-
-# ── HTTP Request ─────────────────────────────────────────────────
-
-[http_request]
-enabled = false                  # deny-by-default; set allowed_domains to enable
-allowed_domains = []
-timeout_secs = 30
-
-# ── Browser ──────────────────────────────────────────────────────
-
-[browser]
-enabled = false
-backend = "agent_browser"
-
-# ── Secrets Encryption ───────────────────────────────────────────
-
-[secrets]
-encrypt = true                   # encrypt API keys/tokens stored in config
-
-# ── Scheduler & Cron ─────────────────────────────────────────────
-
-[scheduler]
-enabled = true
-max_tasks = 64
-
-[cron]
-enabled = true
-
-# ── Heartbeat ────────────────────────────────────────────────────
-
-[heartbeat]
-enabled = false
-interval_minutes = 30
-# target = "telegram"
-# to = "${TELEGRAM_CHAT_ID}"
-
-# ── Goal Loop ────────────────────────────────────────────────────
-
-[goal_loop]
-enabled = false                  # autonomous long-term goal execution
-interval_minutes = 10
-max_steps_per_cycle = 3
-
-# ── Hooks ────────────────────────────────────────────────────────
-
-[hooks]
-enabled = true
-
-[hooks.builtin]
-boot_script = false
-command_logger = false
-session_memory = false
-
-# ── Plugins ──────────────────────────────────────────────────────
-
-[plugins]
-enabled = true
 
 # ── Channels ─────────────────────────────────────────────────────
 
