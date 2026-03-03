@@ -1,7 +1,7 @@
 # ZeroClaw — Dokploy-ready Docker Compose
 #
 # Usage:
-#   cd deploy
+#   cd corey
 #   cp .env.example .env  # edit with real secrets
 #   docker compose up --build -d
 

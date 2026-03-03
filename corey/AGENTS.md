@@ -1,6 +1,6 @@
-# AGENTS.md — ZeroClaw Deploy Directory
+# AGENTS.md — ZeroClaw Corey Directory
 
-Scope: `deploy/` directory only.
+Scope: `corey/` directory only.
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Dokploy-ready (or any Docker Compose platform) deployment for ZeroClaw. Config l
 
 ## Reference Configuration
 
-The canonical deployment settings (config template, compose file, env example, workspace files) live in the [`deploy/` folder on the `corey-setup` branch of `github.com/donbader/zeroclaw`](https://github.com/donbader/zeroclaw/tree/corey-setup/deploy). Use that as the source of truth when bootstrapping or updating this deployment.
+The canonical deployment settings (config template, compose file, env example, workspace files) live in the [`corey/` folder on the `corey-setup` branch of `github.com/donbader/zeroclaw`](https://github.com/donbader/zeroclaw/tree/corey-setup/corey). Use that as the source of truth when bootstrapping or updating this deployment.
 
 ## File Inventory
 
@@ -35,7 +35,7 @@ These files define the agent's personality, tone, and behavior. They are copied 
 | `HEARTBEAT.md` | Periodic tasks (empty by default) |
 | `MEMORY.md` | Long-term curated memory (auto-injected into system prompt) |
 
-To customize personality: edit the files in `deploy/workspace/` and rebuild. Or edit them live on the Docker volume — the entrypoint won't overwrite existing files.
+To customize personality: edit the files in `corey/workspace/` and rebuild. Or edit them live on the Docker volume — the entrypoint won't overwrite existing files.
 
 ## How It Works
 
@@ -74,7 +74,7 @@ At container startup, `entrypoint.sh`:
 ## Validation
 
 ```bash
-cd deploy/
+cd corey/
 cp .env.example .env
 # Edit .env with real values
 docker compose up --build -d

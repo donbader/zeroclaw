@@ -30,9 +30,9 @@ RUN --mount=type=cache,id=zeroclaw-cargo-registry,target=/usr/local/cargo/regist
     --mount=type=cache,id=zeroclaw-cargo-git,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=zeroclaw-target,target=/app/target,sharing=locked \
     if [ -n "$ZEROCLAW_CARGO_FEATURES" ]; then \
-      cargo build --release --features "$ZEROCLAW_CARGO_FEATURES"; \
+      cargo build --profile corey --features "$ZEROCLAW_CARGO_FEATURES"; \
     else \
-      cargo build --release --locked; \
+      cargo build --profile corey --locked; \
     fi
 RUN rm -rf src benches crates/robot-kit/src crates/zeroclaw-types/src crates/zeroclaw-core/src
 
@@ -64,11 +64,11 @@ RUN --mount=type=cache,id=zeroclaw-cargo-registry,target=/usr/local/cargo/regist
     --mount=type=cache,id=zeroclaw-cargo-git,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=zeroclaw-target,target=/app/target,sharing=locked \
     if [ -n "$ZEROCLAW_CARGO_FEATURES" ]; then \
-      cargo build --release --features "$ZEROCLAW_CARGO_FEATURES"; \
+      cargo build --profile corey --features "$ZEROCLAW_CARGO_FEATURES"; \
     else \
-      cargo build --release --locked; \
+      cargo build --profile corey --locked; \
     fi && \
-    cp target/release/zeroclaw /app/zeroclaw && \
+    cp target/corey/zeroclaw /app/zeroclaw && \
     strip /app/zeroclaw
 
 # Prepare runtime directory structure and default config inline (no extra stage)
@@ -145,7 +145,7 @@ ENTRYPOINT ["zeroclaw"]
 CMD ["gateway"]
 
 # ── Stage 4: Deploy (Dokploy / Docker Compose) ───────────────
-# Usage: docker compose up --build (from deploy/)
+# Usage: docker compose up --build (from corey/)
 FROM dev AS deploy
 
 USER root
@@ -155,23 +155,20 @@ ENV PROVIDER=""
 ENV ZEROCLAW_MODEL=""
 
 # envsubst for config template secret injection; git/gh for repo operations; nodejs/npm for stdio MCP servers
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
     git \
+    gh \
     nodejs npm \
     sudo \
     && rm -rf /var/lib/apt/lists/* \
     && echo 'ALL ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zeroclaw
 
-# Install GitHub CLI
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
-    && apt-get update && apt-get install -y --no-install-recommends gh \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY deploy/config.template.toml /etc/zeroclaw/config.template.toml
-COPY deploy/workspace/ /etc/zeroclaw/workspace/
+COPY corey/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY corey/config.template.toml /etc/zeroclaw/config.template.toml
+COPY corey/workspace/ /etc/zeroclaw/workspace/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Clear stale dev config so entrypoint generates from template
