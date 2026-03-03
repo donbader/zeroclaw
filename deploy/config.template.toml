@@ -102,30 +102,10 @@ model = "claude-opus-4.6"
 
 [autonomy]
 level = "full"
-workspace_only = true
+workspace_only = false
 allowed_commands = ["*"]
 non_cli_excluded_tools = []
-forbidden_paths = [
-    "/etc",
-    "/root",
-    "/home",
-    "/usr",
-    "/bin",
-    "/sbin",
-    "/lib",
-    "/opt",
-    "/boot",
-    "/dev",
-    "/proc",
-    "/sys",
-    "/var",
-    "/tmp",
-    "/mnt",
-    "~/.ssh",
-    "~/.gnupg",
-    "~/.aws",
-    "~/.config",
-]
+forbidden_paths = []
 max_actions_per_hour = 100000
 max_cost_per_day_cents = 10000000
 
