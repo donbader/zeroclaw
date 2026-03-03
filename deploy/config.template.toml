@@ -178,7 +178,8 @@ cli = false
 bot_token = "${TELEGRAM_BOT_TOKEN}"
 allowed_users = ["*"]
 stream_mode = "off"
-mention_only = false
+mention_only = true
+parse_mode = "HTML"
 interrupt_on_new_message = false
 ack_enabled = true
 
